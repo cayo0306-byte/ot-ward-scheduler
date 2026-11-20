@@ -8,13 +8,16 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS for Excel (.xlsx) Export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.full.min.js"></script>
+  <!-- Firebase Compat SDK v10.12.2 (App & Firestore) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <!-- Google Fonts: Noto Sans TC & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
-      theme: {  
+      theme: {
         extend: {
           fontFamily: {
             sans: ['"Noto Sans TC"', 'Inter', 'system-ui', 'sans-serif'],
@@ -198,22 +201,43 @@
 
           <div class="h-6 w-px bg-cream-200 hidden md:block"></div>
 
-          <!-- 年份與期別控制 -->
-          <div class="flex items-center gap-2 bg-cream-50 border border-cream-200 rounded-xl px-2.5 py-1.5">
-            <label for="yearInput" class="text-xs font-medium text-slate-600">民國</label>
-            <input id="yearInput" type="number" min="100" max="200" value="114"
-              class="w-16 text-center text-sm font-bold text-morandi-tealDark bg-white border border-cream-300 rounded-lg py-0.5 focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
-            <span class="text-xs font-medium text-slate-600">年</span>
-            <select id="halfSelect"
-              class="text-sm font-semibold text-slate-700 bg-white border border-cream-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
-              <option value="H1">上半年 (1~6月)</option>
-              <option value="H2">下半年 (7~12月)</option>
+          <!-- 期別切換與管理控制 -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-cream-50 border border-cream-200 rounded-xl px-2 py-1.5">
+            <label for="periodSelect" class="text-xs font-bold text-slate-600 pl-1">目前期別</label>
+            <select id="periodSelect" onchange="switchPeriod(this.value)"
+              class="text-xs sm:text-sm font-bold text-morandi-tealDark bg-white border border-cream-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
+              <!-- 由 JS 動態渲染歷年期別 -->
             </select>
+            <button onclick="openNewPeriodModal()" title="新增半年期別"
+              class="px-2 py-1 text-xs font-bold rounded-lg bg-morandi-teal hover:bg-morandi-tealDark text-white transition flex items-center gap-1">
+              <span>＋ 新增期別</span>
+            </button>
+            <button onclick="confirmDeleteCurrentPeriod()" title="刪除目前期別"
+              class="p-1 text-slate-400 hover:text-morandi-red hover:bg-morandi-redLight rounded-lg transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+
+          <!-- 雲端同步狀態徽章與手動重整 -->
+          <div class="flex items-center gap-1">
+            <span id="syncStatusBadge"
+              class="px-2.5 py-1 text-xs font-semibold rounded-xl bg-cream-100 text-slate-600 border border-cream-300 flex items-center gap-1 whitespace-nowrap">
+              💾 本機模式
+            </span>
+            <button id="manualSyncBtn" onclick="manualCloudSync()" title="從雲端重新同步所有期別"
+              class="hidden p-1.5 rounded-xl bg-white hover:bg-morandi-tealLight text-morandi-teal border border-cream-300 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
           </div>
         </div>
 
         <!-- 右側操作按鈕 -->
         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <button onclick="openFirebaseConfigModal()"
+            class="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 transition flex items-center gap-1">
+            <span>☁️ 雲端設定</span>
+          </button>
+
           <button onclick="confirmLoadTemplate()"
             class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-700 border border-cream-300 transition flex items-center gap-1.5">
             <svg class="w-4 h-4 text-morandi-teal" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -491,9 +515,27 @@
 
   <script>
     // =========================================================================
+    // 0. Firebase Firestore 雲端同步設定區（可直接填入後上傳至 GitHub Pages）
+    // =========================================================================
+    // 若您希望所有科內同仁打開網址即自動連線雲端，請將您的 firebaseConfig 貼入下方：
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyDDrK3UBv7fGutDGYiBfaopfszhnCmQU5g",
+  authDomain: "spyclinic1122.firebaseapp.com",
+  projectId: "spyclinic1122",
+  storageBucket: "spyclinic1122.firebasestorage.app",
+  messagingSenderId: "945242946948",
+  appId: "1:945242946948:web:e804315a481e154fb271d1"
+    };
+    // Firestore 集合名稱（共用現有 Firebase 專案時可獨立區隔資料，不影響其他系統）
+    const FIRESTORE_COLLECTION = "ot_ward_schedules";
+    const FIREBASE_CONFIG_STORAGE_KEY = "ot_ward_scheduler_firebase_cfg_v1";
+
+    // =========================================================================
     // 1. 常數定義與預設範本資料 (113 下半年)
     // =========================================================================
-    const STORAGE_KEY = 'ot_ward_scheduler_state_v1';
+    const STORAGE_KEY = 'ot_ward_scheduler_state_v1'; // 舊版單期相容用
+    const PERIODS_STORAGE_KEY = 'ot_ward_scheduler_periods_v2'; // 新版多期別儲存鍵
+    const ACTIVE_PERIOD_STORAGE_KEY = 'ot_ward_scheduler_active_period_v2';
     const DAYS = ['一', '二', '三', '四', '五'];
     const DAYS_FULL = ['星期一', '星期二', '星期三', '星期四', '星期五'];
     const SPECIAL_TAGS = ['WR', '烹飪', '購物', '衛教時間', '外出'];
@@ -651,32 +693,113 @@
     }
 
     // =========================================================================
-    // 2. 系統狀態管理 (State & Persistence)
+    // 2. 系統狀態管理 (Multi-Period State, LocalStorage & Firebase Sync)
     // =========================================================================
-    let state = null;
+    let periodsStore = {};      // { "114-H1": { ...state }, "113-H2": { ...state } }
+    let currentPeriodKey = '';  // 目前選中的期別代碼，例如 "113-H2"
+    let state = null;           // 指向 periodsStore[currentPeriodKey]
     let activeTab = 'wards';
     // brush: { mode: 'edit' | 'therapist' | 'tag' | 'eraser', value: string }
     let activeBrush = { mode: 'edit', value: '' };
 
-    function loadState() {
+    // Firebase 執行期狀態
+    let firebaseApp = null;
+    let firestoreDb = null;
+    let isCloudConnected = false;
+    let syncDebounceTimer = null;
+
+    function makePeriodKey(year, half) {
+      return `${year}-${half}`;
+    }
+
+    function formatPeriodLabel(year, half) {
+      return `${year}年 ${half === 'H1' ? '上半年 (1~6月)' : '下半年 (7~12月)'}`;
+    }
+
+    function getSortedPeriodKeys() {
+      return Object.keys(periodsStore).sort((a, b) => {
+        const [yA, hA] = a.split('-');
+        const [yB, hB] = b.split('-');
+        const diffY = parseInt(yB, 10) - parseInt(yA, 10);
+        if (diffY !== 0) return diffY;
+        // H2 排在 H1 前面（由新到舊）
+        return hA === hB ? 0 : (hB === 'H2' ? 1 : -1);
+      });
+    }
+
+    function updateSyncStatusUI(status, customText = '') {
+      const badge = document.getElementById('syncStatusBadge');
+      const syncBtn = document.getElementById('manualSyncBtn');
+      if (!badge) return;
+
+      const nowStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+      if (status === 'synced') {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || `☁️ 雲端已同步 ${nowStr}`;
+        if (syncBtn) syncBtn.classList.remove('hidden');
+      } else if (status === 'syncing') {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '⏳ 同步中...';
+        if (syncBtn) syncBtn.classList.remove('hidden');
+      } else if (status === 'error') {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-morandi-redLight text-morandi-red border border-red-200 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '⚠️ 連線異常';
+        if (syncBtn) syncBtn.classList.remove('hidden');
+      } else {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-cream-100 text-slate-600 border border-cream-300 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '💾 本機模式';
+        if (syncBtn) syncBtn.classList.add('hidden');
+      }
+    }
+
+    function loadLocalPeriods() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.therapists) && Array.isArray(parsed.wards)) {
-            state = parsed;
-            ensurePersonalExtraKeys();
-            return;
+        const rawMulti = localStorage.getItem(PERIODS_STORAGE_KEY);
+        if (rawMulti) {
+          const parsed = JSON.parse(rawMulti);
+          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+            periodsStore = parsed;
+          }
+        }
+        // 相容舊版單期 localStorage 自動遷移
+        if (Object.keys(periodsStore).length === 0) {
+          const rawLegacy = localStorage.getItem(STORAGE_KEY);
+          if (rawLegacy) {
+            const legacy = JSON.parse(rawLegacy);
+            if (legacy && Array.isArray(legacy.therapists) && Array.isArray(legacy.wards)) {
+              const key = makePeriodKey(legacy.year || 113, legacy.half || 'H2');
+              periodsStore[key] = legacy;
+            }
           }
         }
       } catch (e) {
-        console.warn('無法讀取 localStorage，載入預設範本', e);
+        console.warn('讀取本機多期別資料失敗，將建立預設範本', e);
       }
-      state = build113H2Template(114, 'H1');
-      saveState(false);
+
+      // 首次開啟若無任何期別資料，自動建立「113年 下半年 (7~12月)」範本
+      if (Object.keys(periodsStore).length === 0) {
+        periodsStore['113-H2'] = build113H2Template(113, 'H2');
+      }
+
+      const savedActive = localStorage.getItem(ACTIVE_PERIOD_STORAGE_KEY);
+      const sortedKeys = getSortedPeriodKeys();
+      currentPeriodKey = (savedActive && periodsStore[savedActive]) ? savedActive : sortedKeys[0];
+      state = periodsStore[currentPeriodKey];
+      ensurePersonalExtraKeys();
+      persistLocalPeriods();
+    }
+
+    function persistLocalPeriods() {
+      try {
+        localStorage.setItem(PERIODS_STORAGE_KEY, JSON.stringify(periodsStore));
+        localStorage.setItem(ACTIVE_PERIOD_STORAGE_KEY, currentPeriodKey);
+      } catch (e) {
+        console.error('本機儲存失敗', e);
+      }
     }
 
     function ensurePersonalExtraKeys() {
+      if (!state) return;
       if (!state.personalExtra) state.personalExtra = {};
       state.therapists.forEach(t => {
         if (!state.personalExtra[t.id]) {
@@ -688,14 +811,416 @@
       });
     }
 
+    /**
+     * 儲存目前期別（立即寫入 localStorage，並以 800ms 防抖動同步至 Firestore）
+     */
     function saveState(showIndicator = false) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        if (showIndicator) showToast('已自動儲存變更', 'success');
-      } catch (e) {
-        console.error('儲存失敗', e);
-        showToast('瀏覽器儲存空間不足，請改用「存專案」備份', 'error');
+      if (!state || !currentPeriodKey) return;
+      periodsStore[currentPeriodKey] = state;
+      persistLocalPeriods();
+      if (showIndicator) showToast('已自動儲存變更', 'success');
+
+      if (isCloudConnected && firestoreDb) {
+        updateSyncStatusUI('syncing');
+        clearTimeout(syncDebounceTimer);
+        const keyToSave = currentPeriodKey;
+        const payload = JSON.parse(JSON.stringify(state));
+        payload._updatedAt = new Date().toISOString();
+
+        syncDebounceTimer = setTimeout(async () => {
+          try {
+            await firestoreDb.collection(FIRESTORE_COLLECTION).doc(keyToSave).set(payload);
+            updateSyncStatusUI('synced');
+          } catch (err) {
+            console.error('Firestore 寫入失敗:', err);
+            updateSyncStatusUI('error', '⚠️ 雲端寫入失敗');
+            showToast('雲端同步失敗（已備份於本機），請檢查 Firestore 安全規則', 'error');
+          }
+        }, 800);
       }
+    }
+
+    /**
+     * 取得生效中的 Firebase 設定（程式碼預設優先，其次為瀏覽器儲存）
+     */
+    function getEffectiveFirebaseConfig() {
+      if (DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey && DEFAULT_FIREBASE_CONFIG.projectId) {
+        return { config: DEFAULT_FIREBASE_CONFIG, source: 'code' };
+      }
+      try {
+        const raw = localStorage.getItem(FIREBASE_CONFIG_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.apiKey && parsed.projectId) {
+            return { config: parsed, source: 'local' };
+          }
+        }
+      } catch (e) {
+        console.warn('解析本機 Firebase 設定失敗', e);
+      }
+      return { config: null, source: 'none' };
+    }
+
+    /**
+     * 初始化並連線 Firebase Firestore，同時載入雲端所有期別
+     */
+    async function initFirebaseAndSync(showToastMsg = false) {
+      const { config } = getEffectiveFirebaseConfig();
+      if (!config || typeof firebase === 'undefined') {
+        isCloudConnected = false;
+        firestoreDb = null;
+        updateSyncStatusUI('local');
+        return false;
+      }
+
+      updateSyncStatusUI('syncing', '⏳ 連線雲端...');
+      try {
+        // 若已有舊的 Firebase App 實例先移除，確保切換金鑰時能重新連線
+        if (firebase.apps && firebase.apps.length > 0) {
+          await Promise.all(firebase.apps.map(app => app.delete()));
+        }
+        firebaseApp = firebase.initializeApp(config);
+        firestoreDb = firebase.firestore();
+        isCloudConnected = true;
+
+        const ok = await fetchAllPeriodsFromCloud(showToastMsg);
+        return ok;
+      } catch (err) {
+        console.error('Firebase 初始化失敗:', err);
+        isCloudConnected = false;
+        firestoreDb = null;
+        updateSyncStatusUI('error', '⚠️ 連線異常');
+        if (showToastMsg) showToast('Firebase 連線失敗，請檢查金鑰格式或網路狀態', 'error');
+        return false;
+      }
+    }
+
+    async function fetchAllPeriodsFromCloud(showToastMsg = false) {
+      if (!firestoreDb) return false;
+      updateSyncStatusUI('syncing', '⏳ 同步中...');
+      try {
+        const snapshot = await firestoreDb.collection(FIRESTORE_COLLECTION).get();
+        if (snapshot.empty) {
+          // 雲端尚無資料時，將本機現有期別主動上傳初始化
+          const keys = Object.keys(periodsStore);
+          for (const k of keys) {
+            const payload = JSON.parse(JSON.stringify(periodsStore[k]));
+            payload._updatedAt = new Date().toISOString();
+            await firestoreDb.collection(FIRESTORE_COLLECTION).doc(k).set(payload);
+          }
+        } else {
+          // 合併雲端資料（雲端優先）
+          const cloudStore = {};
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data && Array.isArray(data.therapists) && Array.isArray(data.wards)) {
+              cloudStore[doc.id] = data;
+            }
+          });
+          if (Object.keys(cloudStore).length > 0) {
+            periodsStore = { ...periodsStore, ...cloudStore };
+          }
+        }
+
+        const sorted = getSortedPeriodKeys();
+        if (!periodsStore[currentPeriodKey]) {
+          currentPeriodKey = sorted[0];
+        }
+        state = periodsStore[currentPeriodKey];
+        ensurePersonalExtraKeys();
+        persistLocalPeriods();
+        updateSyncStatusUI('synced');
+        renderAll();
+        if (showToastMsg) showToast(`已從雲端同步 ${Object.keys(periodsStore).length} 個期別`, 'success');
+        return true;
+      } catch (err) {
+        console.error('讀取 Firestore 失敗:', err);
+        updateSyncStatusUI('error', '⚠️ 讀取異常');
+        if (showToastMsg) showToast('無法讀取雲端資料，請確認 Firestore 已建立且安全規則允許讀寫', 'error');
+        return false;
+      }
+    }
+
+    function manualCloudSync() {
+      if (!isCloudConnected) {
+        initFirebaseAndSync(true);
+      } else {
+        fetchAllPeriodsFromCloud(true);
+      }
+    }
+
+    // =========================================================================
+    // 2.5 期別管理功能（切換、新增、複製並順延輪替、刪除）
+    // =========================================================================
+    function renderPeriodSelector() {
+      const sel = document.getElementById('periodSelect');
+      if (!sel) return;
+      const keys = getSortedPeriodKeys();
+      sel.innerHTML = keys.map(k => {
+        const p = periodsStore[k];
+        const label = formatPeriodLabel(p.year, p.half);
+        return `<option value="${k}" ${k === currentPeriodKey ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+      }).join('');
+    }
+
+    function switchPeriod(periodKey) {
+      if (!periodsStore[periodKey]) return;
+      currentPeriodKey = periodKey;
+      state = periodsStore[currentPeriodKey];
+      ensurePersonalExtraKeys();
+      persistLocalPeriods();
+      renderAll();
+      showToast(`已切換至 ${formatPeriodLabel(state.year, state.half)}`, 'info');
+    }
+
+    function openNewPeriodModal() {
+      const sorted = getSortedPeriodKeys();
+      const latest = periodsStore[sorted[0]];
+      // 自動推測下一個半年期別
+      let suggestYear = latest ? latest.year : 114;
+      let suggestHalf = 'H1';
+      if (latest) {
+        if (latest.half === 'H1') {
+          suggestYear = latest.year;
+          suggestHalf = 'H2';
+        } else {
+          suggestYear = latest.year + 1;
+          suggestHalf = 'H1';
+        }
+      }
+
+      const sourceOptions = sorted.map(k => {
+        const p = periodsStore[k];
+        return `<option value="${k}">${escapeHtml(formatPeriodLabel(p.year, p.half))}</option>`;
+      }).join('');
+
+      const bodyHtml = `
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">民國年</label>
+            <input id="newPeriodYear" type="number" min="100" max="200" value="${suggestYear}"
+              class="w-full px-3 py-2 text-sm font-bold text-morandi-tealDark bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">期別</label>
+            <select id="newPeriodHalf" class="w-full px-3 py-2 text-sm font-semibold bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal">
+              <option value="H1" ${suggestHalf === 'H1' ? 'selected' : ''}>上半年 (1~6月)</option>
+              <option value="H2" ${suggestHalf === 'H2' ? 'selected' : ''}>下半年 (7~12月)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 pt-1">
+          <p class="text-xs font-bold text-slate-600">建立方式</p>
+
+          <label class="block p-3 rounded-xl border border-cream-200 bg-cream-50/70 hover:bg-morandi-tealLight/30 cursor-pointer transition">
+            <div class="flex items-center gap-2">
+              <input type="radio" name="newPeriodMode" value="copy" checked onchange="toggleCopyOptions()" class="text-morandi-teal focus:ring-morandi-teal" />
+              <span class="text-sm font-bold text-slate-800">複製既有期別當底稿（推薦）</span>
+            </div>
+            <div id="copyOptionsBox" class="mt-2.5 pl-6 space-y-2">
+              <select id="copySourcePeriod" class="w-full px-2.5 py-1.5 text-xs sm:text-sm font-semibold bg-white border border-cream-300 rounded-lg">
+                ${sourceOptions}
+              </select>
+              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <input id="autoAdvanceRotation" type="checkbox" checked class="rounded text-morandi-teal focus:ring-morandi-teal" />
+                <span>自動順延活動輪替（+3 期，銜接上期最後一輪）</span>
+              </label>
+            </div>
+          </label>
+
+          <label class="flex items-center gap-2 p-3 rounded-xl border border-cream-200 bg-white hover:bg-cream-50 cursor-pointer transition">
+            <input type="radio" name="newPeriodMode" value="template" onchange="toggleCopyOptions()" class="text-morandi-teal focus:ring-morandi-teal" />
+            <span class="text-sm font-semibold text-slate-800">載入 113 下半年預設範本</span>
+          </label>
+
+          <label class="flex items-center gap-2 p-3 rounded-xl border border-cream-200 bg-white hover:bg-cream-50 cursor-pointer transition">
+            <input type="radio" name="newPeriodMode" value="blank" onchange="toggleCopyOptions()" class="text-morandi-teal focus:ring-morandi-teal" />
+            <span class="text-sm font-semibold text-slate-800">建立空白排程（保留目前治療師名單）</span>
+          </label>
+        </div>
+      `;
+
+      const footerHtml = `
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button onclick="createNewPeriod()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">建立並切換</button>
+      `;
+
+      openModal('新增半年期別', bodyHtml, footerHtml);
+    }
+
+    function toggleCopyOptions() {
+      const mode = document.querySelector('input[name="newPeriodMode"]:checked')?.value;
+      const box = document.getElementById('copyOptionsBox');
+      if (box) box.style.display = mode === 'copy' ? 'block' : 'none';
+    }
+
+    function createNewPeriod() {
+      const year = parseInt(document.getElementById('newPeriodYear').value, 10);
+      const half = document.getElementById('newPeriodHalf').value;
+      const mode = document.querySelector('input[name="newPeriodMode"]:checked')?.value || 'copy';
+
+      if (isNaN(year) || year < 100 || year > 200) {
+        showToast('請輸入正確的民國年份', 'error');
+        return;
+      }
+
+      const newKey = makePeriodKey(year, half);
+      if (periodsStore[newKey]) {
+        showToast(`${formatPeriodLabel(year, half)} 已存在，請直接從選單切換`, 'error');
+        return;
+      }
+
+      let newState = null;
+      if (mode === 'copy') {
+        const srcKey = document.getElementById('copySourcePeriod').value;
+        const advance = document.getElementById('autoAdvanceRotation').checked;
+        newState = JSON.parse(JSON.stringify(periodsStore[srcKey] || state));
+        newState.year = year;
+        newState.half = half;
+        if (advance && Array.isArray(newState.activities) && newState.activities.length > 0) {
+          const len = newState.activities.length;
+          newState.therapists.forEach(t => {
+            t.startActivityIndex = ((t.startActivityIndex || 0) + 3) % len;
+          });
+        }
+      } else if (mode === 'template') {
+        newState = build113H2Template(year, half);
+      } else {
+        // 空白排程（保留治療師與活動順序）
+        newState = JSON.parse(JSON.stringify(state));
+        newState.year = year;
+        newState.half = half;
+        newState.wards.forEach(w => { w.schedule = createEmptyWardSchedule(); });
+        newState.evalIcf = { amEval: [[], [], [], [], []], amIcf: [[], [], [], [], []], pmEval: [[], [], [], [], []], pmIcf: [[], [], [], [], []] };
+        newState.rehab = { amGarden: ['', '', '', '', ''], amSweep: ['', '', '', '', ''], pmGarden: ['', '', '', '', ''], pmSweep: ['', '', '', '', ''] };
+        newState.therapists.forEach(t => {
+          newState.personalExtra[t.id] = { am: [[], [], [], [], []], pm: [[], [], [], [], []] };
+        });
+      }
+
+      periodsStore[newKey] = newState;
+      currentPeriodKey = newKey;
+      state = periodsStore[newKey];
+      ensurePersonalExtraKeys();
+      closeModal();
+      saveState();
+      renderAll();
+      showToast(`已建立並切換至 ${formatPeriodLabel(year, half)}`, 'success');
+    }
+
+    function confirmDeleteCurrentPeriod() {
+      const keys = Object.keys(periodsStore);
+      if (keys.length <= 1) {
+        showToast('至少須保留 1 個期別，無法刪除', 'error');
+        return;
+      }
+      const delKey = currentPeriodKey;
+      const delLabel = formatPeriodLabel(state.year, state.half);
+
+      openConfirmModal(
+        '刪除目前期別',
+        `確定要永久刪除「${escapeHtml(delLabel)}」的排程資料嗎？（若已連線雲端，雲端上的該期別檔案也會一併刪除）`,
+        async () => {
+          delete periodsStore[delKey];
+          const remaining = getSortedPeriodKeys();
+          currentPeriodKey = remaining[0];
+          state = periodsStore[currentPeriodKey];
+          ensurePersonalExtraKeys();
+          persistLocalPeriods();
+          renderAll();
+
+          if (isCloudConnected && firestoreDb) {
+            try {
+              await firestoreDb.collection(FIRESTORE_COLLECTION).doc(delKey).delete();
+              updateSyncStatusUI('synced');
+            } catch (err) {
+              console.error('刪除雲端文件失敗:', err);
+            }
+          }
+          showToast(`已刪除 ${delLabel}`, 'info');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 2.6 Firebase 雲端設定彈窗與智慧解析器
+    // =========================================================================
+    function parseFirebaseConfigInput(rawText) {
+      const text = (rawText || '').trim();
+      if (!text) return null;
+
+      // 1. 嘗試直接 JSON.parse
+      try {
+        const direct = JSON.parse(text);
+        if (direct && direct.apiKey && direct.projectId) return direct;
+      } catch (_) {}
+
+      // 2. 抽取 {...} 區塊並將 JS 物件語法（未加雙引號的 key、單引號、尾隨逗號）轉為合法 JSON
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      let objStr = match[0]
+        .replace(/\/\/.*$/gm, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+        .replace(/'/g, '"')
+        .replace(/,\s*}/g, '}');
+
+      try {
+        const parsed = JSON.parse(objStr);
+        if (parsed && parsed.apiKey && parsed.projectId) return parsed;
+      } catch (_) {}
+      return null;
+    }
+
+    function openFirebaseConfigModal() {
+      const { config, source } = getEffectiveFirebaseConfig();
+      const displayVal = config ? JSON.stringify(config, null, 2) : '';
+      const sourceNote = source === 'code'
+        ? `<div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium">目前正使用程式碼內建的 DEFAULT_FIREBASE_CONFIG 自動連線。</div>`
+        : (source === 'local'
+          ? `<div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-800 font-medium">目前使用此瀏覽器儲存的 Firebase 金鑰連線。</div>`
+          : `<div class="p-2.5 rounded-xl bg-cream-100 border border-cream-300 text-xs text-slate-600">尚未設定 Firebase，目前為「本機儲存模式」。貼上您的 firebaseConfig 即可啟用跨裝置雲端同步。</div>`);
+
+      const bodyHtml = `
+        ${sourceNote}
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">貼上您的 firebaseConfig（支援整段 JS 碼或 JSON）</label>
+          <textarea id="firebaseConfigTextarea" rows="8"
+            class="w-full p-3 text-xs font-mono bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+            placeholder="const firebaseConfig = {\n  apiKey: &quot;AIzaSy...&quot;,\n  authDomain: &quot;...&quot;,\n  projectId: &quot;...&quot;,\n  ...\n};">${escapeHtml(displayVal)}</textarea>
+          <p class="text-[11px] text-slate-500 mt-1">集合名稱：<code class="px-1 py-0.5 bg-cream-100 rounded">${FIRESTORE_COLLECTION}</code>（可安心共用現有 Firebase 專案）</p>
+        </div>
+      `;
+
+      const footerHtml = `
+        ${source === 'local' ? `<button onclick="disconnectFirebaseLocal()" class="mr-auto px-3 py-1.5 text-xs font-semibold rounded-xl text-morandi-red hover:bg-morandi-redLight transition">清除並改回本機</button>` : ''}
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button onclick="saveAndTestFirebaseConfig()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存並連線測試</button>
+      `;
+
+      openModal('☁️ Firebase 雲端同步設定', bodyHtml, footerHtml);
+    }
+
+    async function saveAndTestFirebaseConfig() {
+      const raw = document.getElementById('firebaseConfigTextarea').value;
+      const parsed = parseFirebaseConfigInput(raw);
+      if (!parsed) {
+        showToast('無法解析設定碼，請確認內容包含 apiKey 與 projectId', 'error');
+        return;
+      }
+      localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(parsed));
+      closeModal();
+      await initFirebaseAndSync(true);
+    }
+
+    function disconnectFirebaseLocal() {
+      localStorage.removeItem(FIREBASE_CONFIG_STORAGE_KEY);
+      isCloudConnected = false;
+      firestoreDb = null;
+      updateSyncStatusUI('local');
+      closeModal();
+      showToast('已切換回本機儲存模式', 'info');
     }
 
     // =========================================================================
@@ -904,9 +1429,8 @@
     }
 
     function renderAll() {
-      // 同步頂部控制項
-      document.getElementById('yearInput').value = state.year;
-      document.getElementById('halfSelect').value = state.half;
+      // 同步頂部期別下拉選單
+      renderPeriodSelector();
 
       const conflicts = detectConflicts();
       const conflictCount = Object.keys(conflicts).length;
@@ -2653,11 +3177,14 @@
           if (!parsed.therapists || !parsed.wards) {
             throw new Error('格式不符');
           }
-          state = parsed;
+          const key = makePeriodKey(parsed.year || state.year, parsed.half || state.half);
+          periodsStore[key] = parsed;
+          currentPeriodKey = key;
+          state = periodsStore[key];
           ensurePersonalExtraKeys();
           saveState();
           renderAll();
-          showToast('成功匯入專案資料！', 'success');
+          showToast(`成功匯入專案：${formatPeriodLabel(state.year, state.half)}`, 'success');
         } catch (err) {
           showToast('匯入失敗：請確認檔案為正確的排程 JSON 檔', 'error');
         } finally {
@@ -3128,23 +3655,7 @@
     // 13. 事件綁定與初始化
     // =========================================================================
     window.addEventListener('DOMContentLoaded', () => {
-      loadState();
-
-      // 年份與半年度輸入監聽
-      document.getElementById('yearInput').addEventListener('change', (e) => {
-        const val = parseInt(e.target.value, 10);
-        if (!isNaN(val) && val > 0) {
-          state.year = val;
-          saveState();
-          renderAll();
-        }
-      });
-
-      document.getElementById('halfSelect').addEventListener('change', (e) => {
-        state.half = e.target.value;
-        saveState();
-        renderAll();
-      });
+      loadLocalPeriods();
 
       // Tab 2 備註欄位監聽
       ['recordOrderInput', 'recordCurrentInput', 'footerNoteInput'].forEach(id => {
@@ -3161,6 +3672,9 @@
 
       // 預設進入 Tab 1
       switchTab('wards');
+
+      // 嘗試自動連線 Firebase 雲端同步
+      initFirebaseAndSync(false);
     });
   </script>
 </body>
