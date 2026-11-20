@@ -517,14 +517,14 @@
     // =========================================================================
     // 0. Firebase Firestore 雲端同步設定區（可直接填入後上傳至 GitHub Pages）
     // =========================================================================
-    // 若您希望所有科內同仁打開網址即自動連線雲端，請將您的 firebaseConfig 貼入下方：
+    // 已內建您的 Firebase 專案金鑰，同仁打開網址即可自動連線雲端同步
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey: "AIzaSyDDrK3UBv7fGutDGYiBfaopfszhnCmQU5g",
-  authDomain: "spyclinic1122.firebaseapp.com",
-  projectId: "spyclinic1122",
-  storageBucket: "spyclinic1122.firebasestorage.app",
-  messagingSenderId: "945242946948",
-  appId: "1:945242946948:web:e804315a481e154fb271d1"
+      authDomain: "spyclinic1122.firebaseapp.com",
+      projectId: "spyclinic1122",
+      storageBucket: "spyclinic1122.firebasestorage.app",
+      messagingSenderId: "945242946948",
+      appId: "1:945242946948:web:e804315a481e154fb271d1"
     };
     // Firestore 集合名稱（共用現有 Firebase 專案時可獨立區隔資料，不影響其他系統）
     const FIRESTORE_COLLECTION = "ot_ward_schedules";
@@ -829,7 +829,11 @@
 
         syncDebounceTimer = setTimeout(async () => {
           try {
-            await firestoreDb.collection(FIRESTORE_COLLECTION).doc(keyToSave).set(payload);
+            // 將期別資料轉為 JSON 字串存入，避免 Firestore 不支援巢狀陣列（Nested arrays）報錯
+            await firestoreDb.collection(FIRESTORE_COLLECTION).doc(keyToSave).set({
+              payload: JSON.stringify(payload),
+              updatedAt: Date.now()
+            });
             updateSyncStatusUI('synced');
           } catch (err) {
             console.error('Firestore 寫入失敗:', err);
@@ -901,20 +905,28 @@
       try {
         const snapshot = await firestoreDb.collection(FIRESTORE_COLLECTION).get();
         if (snapshot.empty) {
-          // 雲端尚無資料時，將本機現有期別主動上傳初始化
+          // 雲端尚無資料時，將本機現有期別主動上傳初始化（以 JSON 字串包裝避免巢狀陣列錯誤）
           const keys = Object.keys(periodsStore);
           for (const k of keys) {
             const payload = JSON.parse(JSON.stringify(periodsStore[k]));
             payload._updatedAt = new Date().toISOString();
-            await firestoreDb.collection(FIRESTORE_COLLECTION).doc(k).set(payload);
+            await firestoreDb.collection(FIRESTORE_COLLECTION).doc(k).set({
+              payload: JSON.stringify(payload),
+              updatedAt: Date.now()
+            });
           }
         } else {
-          // 合併雲端資料（雲端優先）
+          // 合併雲端資料（雲端優先），相容字串 payload 與舊版物件格式
           const cloudStore = {};
           snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data && Array.isArray(data.therapists) && Array.isArray(data.wards)) {
-              cloudStore[doc.id] = data;
+            try {
+              const raw = doc.data();
+              const data = (raw && typeof raw.payload === 'string') ? JSON.parse(raw.payload) : raw;
+              if (data && Array.isArray(data.therapists) && Array.isArray(data.wards)) {
+                cloudStore[doc.id] = data;
+              }
+            } catch (parseErr) {
+              console.warn(`解析雲端期別 ${doc.id} 失敗:`, parseErr);
             }
           });
           if (Object.keys(cloudStore).length > 0) {
