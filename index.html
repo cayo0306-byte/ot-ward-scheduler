@@ -1,0 +1,3167 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>精神科病房職能治療活動時間表排程系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS for Excel (.xlsx) Export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.full.min.js"></script>
+  <!-- Google Fonts: Noto Sans TC & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {  
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', 'Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            cream: {
+              50: '#FAF9F6',
+              100: '#F5F2EB',
+              200: '#E8E3D9',
+              300: '#D8D1C5',
+            },
+            morandi: {
+              teal: '#4A7C7E',
+              tealDark: '#3A6466',
+              tealLight: '#E8F1F1',
+              sage: '#7A9A8B',
+              slate: '#5C6F7B',
+              warm: '#C4835E',
+              warmLight: '#F8EFEA',
+              red: '#C85A5A',
+              redLight: '#FBECEC',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #F5F2EB;
+      color: #2F3A3D;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F5F2EB;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #C9C2B6;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #A9A193;
+    }
+    .brush-active {
+      box-shadow: 0 0 0 3px #4A7C7E, 0 4px 10px rgba(74, 124, 126, 0.25);
+      transform: translateY(-1px);
+    }
+    .cell-hover {
+      transition: all 0.15s ease;
+    }
+    .cell-hover:hover {
+      background-color: #EFF5F5;
+    }
+    .conflict-cell {
+      background-color: #FDF2F2 !important;
+      box-shadow: inset 0 0 0 2px #C85A5A !important;
+    }
+    /* Announcement Preview Table Styling */
+    .announce-table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .announce-table th,
+    .announce-table td {
+      border: 1.5px solid #374151;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .mini-rot-table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .mini-rot-table th,
+    .mini-rot-table td {
+      border: 1px solid #9CA3AF;
+      padding: 2px 3px;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    /* ==================== 列印專屬樣式 (A4 橫式) ==================== */
+    #printContainer {
+      display: none;
+    }
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+      body {
+        background: #FFFFFF !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      header,
+      main,
+      #modalBackdrop,
+      #toastContainer {
+        display: none !important;
+      }
+      #printContainer {
+        display: block !important;
+        width: 100% !important;
+        font-family: "標楷體", "DFKai-SB", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+        color: #000000 !important;
+      }
+      .print-page {
+        page-break-after: always;
+        break-after: page;
+        width: 100%;
+      }
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .print-summary-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+        font-size: 9.5pt;
+        margin-bottom: 6px;
+      }
+      .print-summary-table th,
+      .print-summary-table td {
+        border: 1px solid #000000;
+        padding: 3px 4px;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .print-announce-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      .print-announce-table th,
+      .print-announce-table td {
+        border: 1.8px solid #000000;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .print-announce-table th {
+        background-color: #F3F4F6 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 8px 4px;
+        font-size: 14pt;
+        font-weight: bold;
+      }
+      .print-announce-table td {
+        padding: 6px 4px;
+        height: 68mm;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-morandi-tealLight selection:text-morandi-tealDark">
+
+  <!-- ==================== 頂部工具列 (Header) ==================== -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-cream-200 shadow-sm">
+    <div class="max-w-[1440px] mx-auto px-3 sm:px-6 py-3">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <!-- 標題與期別選擇 -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-morandi-teal text-white flex items-center justify-center shadow-sm shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-base sm:text-lg font-bold text-slate-800 leading-tight tracking-tight">精神科病房 OT 活動時間表排程系統</h1>
+              <p class="text-xs text-slate-500 hidden sm:block">點選排班・即時衝堂偵測・三期自動輪替・Word / Excel 匯出</p>
+            </div>
+          </div>
+
+          <div class="h-6 w-px bg-cream-200 hidden md:block"></div>
+
+          <!-- 年份與期別控制 -->
+          <div class="flex items-center gap-2 bg-cream-50 border border-cream-200 rounded-xl px-2.5 py-1.5">
+            <label for="yearInput" class="text-xs font-medium text-slate-600">民國</label>
+            <input id="yearInput" type="number" min="100" max="200" value="114"
+              class="w-16 text-center text-sm font-bold text-morandi-tealDark bg-white border border-cream-300 rounded-lg py-0.5 focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+            <span class="text-xs font-medium text-slate-600">年</span>
+            <select id="halfSelect"
+              class="text-sm font-semibold text-slate-700 bg-white border border-cream-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
+              <option value="H1">上半年 (1~6月)</option>
+              <option value="H2">下半年 (7~12月)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 右側操作按鈕 -->
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <button onclick="confirmLoadTemplate()"
+            class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-700 border border-cream-300 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-morandi-teal" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>載入 113 下半年範本</span>
+          </button>
+
+          <button onclick="confirmClearAll()"
+            class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl bg-white hover:bg-morandi-redLight text-morandi-red border border-red-200 transition flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <span>清空排程</span>
+          </button>
+
+          <div class="relative inline-flex rounded-xl shadow-sm">
+            <button onclick="exportJSON()"
+              class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-l-xl bg-white hover:bg-cream-100 text-slate-700 border border-cream-300 transition flex items-center gap-1" title="儲存專案 JSON 檔">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+              <span class="hidden sm:inline">存專案</span>
+            </button>
+            <label class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-r-xl bg-white hover:bg-cream-100 text-slate-700 border-y border-r border-cream-300 transition flex items-center gap-1 cursor-pointer" title="匯入專案 JSON 檔">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              <span class="hidden sm:inline">匯入</span>
+              <input id="jsonImportInput" type="file" accept=".json" class="hidden" onchange="importJSON(event)" />
+            </label>
+          </div>
+
+          <button onclick="openExportModal()"
+            class="px-3.5 py-1.5 text-xs sm:text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-md hover:shadow-lg transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>一鍵輸出 / 選擇病房列印</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 分頁導覽列 (Tabs) -->
+      <nav class="mt-3 flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
+        <button data-tab="wards" onclick="switchTab('wards')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap flex items-center gap-1.5">
+          <span>1. 各病房活動排程</span>
+          <span id="tabConflictBadge" class="hidden px-1.5 py-0.5 text-[11px] font-bold rounded-full bg-morandi-red text-white">0</span>
+        </button>
+        <button data-tab="personal" onclick="switchTab('personal')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+          2. 個人課表 / 評估 ICF / 復健工作
+        </button>
+        <button data-tab="rotation" onclick="switchTab('rotation')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+          3. 活動輪替設定與各病房公告預覽
+        </button>
+        <button data-tab="settings" onclick="switchTab('settings')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+          4. 人員與基本設定
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ==================== 主內容工作區 ==================== -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-5 space-y-6">
+
+    <!-- ==================== TAB 1: 各病房活動排程 ==================== -->
+    <section id="tab-wards" class="tab-panel space-y-5">
+      <!-- 快速點選畫筆工具列 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-bold text-slate-800">快速點選工具列</span>
+            <span id="activeBrushHint" class="text-xs px-2.5 py-0.5 rounded-full bg-morandi-tealLight text-morandi-tealDark font-medium">
+              請選擇下方治療師或標籤進行快速點選，或切換至「編輯模式」開啟詳細視窗
+            </span>
+          </div>
+          <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none bg-cream-50 px-2.5 py-1 rounded-lg border border-cream-200">
+            <input id="multiAssignToggle" type="checkbox" class="rounded text-morandi-teal focus:ring-morandi-teal" />
+            <span>多人疊加模式（勾選後可於同一格排入多位治療師）</span>
+          </label>
+        </div>
+
+        <div id="brushToolbar" class="flex flex-wrap items-center gap-2">
+          <!-- 由 JS 動態渲染：編輯模式按鈕 + 治療師畫筆 + 特殊標籤 + 橡皮擦 -->
+        </div>
+      </div>
+
+      <!-- 衝堂警示橫幅 (有衝堂時才顯示) -->
+      <div id="conflictBanner" class="hidden bg-morandi-redLight border border-red-300 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-start gap-2.5">
+        <div class="flex items-center gap-2 text-morandi-red font-bold text-sm shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <span id="conflictBannerTitle">偵測到排班衝堂</span>
+        </div>
+        <div id="conflictBannerList" class="text-xs text-red-900 flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <!-- 5 個病房排班卡片區 -->
+      <div id="wardsGrid" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <!-- 由 JS 動態渲染 8W ~ 12W -->
+      </div>
+
+      <!-- 底部即時工作量統計面板 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-morandi-teal"></span>
+            本週治療師工作量即時統計
+          </h2>
+          <span class="text-xs text-slate-500">自動統計各病房活動、評估、ICF 與復工（園藝＋掃地）次數</span>
+        </div>
+        <div id="statsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5">
+          <!-- 由 JS 動態渲染 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: 個人課表 / 評估 ICF / 復健工作 ==================== -->
+    <section id="tab-personal" class="tab-panel hidden space-y-6">
+      <!-- 個人活動時間表總覽 -->
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-800">個人活動時間表總覽</h2>
+            <p class="text-xs text-slate-500">「上午/下午」自動同步各病房排程；點擊「早務/晚務」格子可直接加入或移除額外業務（如：兒心、巡迴、戒治、教學、會議、WR 等）。</p>
+          </div>
+        </div>
+        <div id="personalSchedulesGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- 由 JS 動態渲染每位治療師個人週表 -->
+        </div>
+      </div>
+
+      <!-- 評估與 ICF 總表 + 復健工作總表 -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <!-- 評估與 ICF 總表 -->
+        <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">評估與 ICF 總表</h3>
+              <p class="text-xs text-slate-500">點擊任一格子指派治療師、時間與院區，自動同步至個人課表</p>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-lg bg-morandi-tealLight text-morandi-tealDark font-medium">雙向同步</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-xs sm:text-sm" id="evalIcfTable">
+              <!-- 由 JS 動態渲染 -->
+            </table>
+          </div>
+        </div>
+
+        <!-- 復健工作 (復工) 總表 -->
+        <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">復健工作（復工）總表</h3>
+              <p class="text-xs text-slate-500">點選下拉選單指派園藝／掃地負責治療師，自動同步至個人課表</p>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-lg bg-morandi-tealLight text-morandi-tealDark font-medium">雙向同步</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-xs sm:text-sm" id="rehabTable">
+              <!-- 由 JS 動態渲染 -->
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 紀錄二次順序與備註 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4">
+        <h3 class="text-sm font-bold text-slate-800 mb-3">紀錄二次順序與總表備註</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">紀錄二次輪值順序</label>
+            <input id="recordOrderInput" type="text"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+              placeholder="例如：歐黃陳吳林張儀" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">本期二次紀錄名單</label>
+            <input id="recordCurrentInput" type="text"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+              placeholder="例如：儀 歐 吳" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">總表底部附註</label>
+            <input id="footerNoteInput" type="text"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+              placeholder="例如：評：斗六 ／ 虎：虎尾" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: 活動輪替設定與各病房公告預覽 ==================== -->
+    <section id="tab-rotation" class="tab-panel hidden space-y-6">
+      <!-- 活動輪替順序設定 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-slate-800">1. 活動輪替順序設定</h2>
+            <p class="text-xs text-slate-500">可自由修改活動名稱，系統將依序為每位治療師自動推算三期輪替活動</p>
+          </div>
+        </div>
+        <div id="activitySequenceEditor" class="flex flex-wrap items-center gap-2">
+          <!-- 由 JS 動態渲染 -->
+        </div>
+      </div>
+
+      <!-- 治療師起始活動與三期對照表 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
+        <div>
+          <h2 class="text-sm font-bold text-slate-800">2. 治療師起始活動設定與三期輪替對照表</h2>
+          <p class="text-xs text-slate-500">選擇每位治療師第 1 期的負責活動，第 2 期與第 3 期將依上方順序自動推算</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-sm" id="therapistRotationTable">
+            <!-- 由 JS 動態渲染 -->
+          </table>
+        </div>
+      </div>
+
+      <!-- 各病房公告版預覽 -->
+      <div class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-800">3. 各病房公告版預覽（列印與 Word 張貼格式）</h2>
+            <p class="text-xs text-slate-500">以下呈現 8W～12W 公告版實際樣貌，可針對單一病房直接列印／下載 Word，或點選右側開啟多選輸出視窗</p>
+          </div>
+          <button onclick="openExportModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>批次勾選列印 / 匯出</span>
+          </button>
+        </div>
+        <div id="announcementsContainer" class="space-y-6">
+          <!-- 由 JS 動態渲染 8W ~ 12W 公告卡片 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: 人員與基本設定 ==================== -->
+    <section id="tab-settings" class="tab-panel hidden space-y-5">
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-800">治療師名單與代表色管理</h2>
+            <p class="text-xs text-slate-500">可新增、修改或刪除治療師；修改簡稱、全名或代表色會即時套用至所有表格與匯出檔案</p>
+          </div>
+          <button onclick="addNewTherapist()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span>新增治療師</span>
+          </button>
+        </div>
+
+        <div id="therapistSettingsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <!-- 由 JS 動態渲染 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 共用 Modal 容器 ==================== -->
+  <div id="modalBackdrop" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] hidden items-center justify-center p-4" onclick="closeModalOnBackdrop(event)">
+    <div id="modalCard" class="bg-white rounded-2xl border border-cream-200 shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+      <div class="px-5 py-3.5 bg-cream-50 border-b border-cream-200 flex items-center justify-between">
+        <h3 id="modalTitle" class="text-base font-bold text-slate-800">標題</h3>
+        <button onclick="closeModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-cream-200 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modalBody" class="p-5 max-h-[75vh] overflow-y-auto space-y-4">
+        <!-- 動態內容 -->
+      </div>
+      <div id="modalFooter" class="px-5 py-3 bg-cream-50 border-t border-cream-200 flex justify-end gap-2">
+        <!-- 動態按鈕 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Toast 提示訊息 ==================== -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ==================== 專屬列印容器 (僅於列印時顯示) ==================== -->
+  <div id="printContainer"></div>
+
+  <script>
+    // =========================================================================
+    // 1. 常數定義與預設範本資料 (113 下半年)
+    // =========================================================================
+    const STORAGE_KEY = 'ot_ward_scheduler_state_v1';
+    const DAYS = ['一', '二', '三', '四', '五'];
+    const DAYS_FULL = ['星期一', '星期二', '星期三', '星期四', '星期五'];
+    const SPECIAL_TAGS = ['WR', '烹飪', '購物', '衛教時間', '外出'];
+    const NON_ROTATION_TAGS = ['烹飪', '購物', '衛教時間', '外出'];
+    const CONFLICT_EXTRAS = ['兒心', '巡迴', '戒治'];
+    const QUICK_EXTRAS = ['兒心', '巡迴', '戒治', '教學', '會議', '美沙冬', 'WR', '掃', '園'];
+    const QUICK_TIMES = ['8:30', '9:00', '9:30', '10:00', '10:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
+
+    const MORANDI_PALETTE = [
+      { color: '#4A7C7E', bg: '#E6F0F0', border: '#A3C4C4' },
+      { color: '#B8647D', bg: '#F8EAEE', border: '#DFB0BE' },
+      { color: '#587FA1', bg: '#EAF0F6', border: '#AEC4D9' },
+      { color: '#BD7E4B', bg: '#F9F1E8', border: '#E3C1A3' },
+      { color: '#698D58', bg: '#EDF3EA', border: '#B9CFAF' },
+      { color: '#836CA8', bg: '#F1EEF7', border: '#C4B7DC' },
+      { color: '#A68D3E', bg: '#F7F3E5', border: '#DBD0A2' },
+      { color: '#B35D5D', bg: '#FBECEC', border: '#E3B2B2' },
+      { color: '#5A7B8C', bg: '#EBF1F4', border: '#B2C8D4' },
+      { color: '#7D7463', bg: '#F2F0EC', border: '#CFC9BE' }
+    ];
+
+    function createEmptyCell() {
+      return { therapistIds: [], tags: [], customNote: '' };
+    }
+
+    function createEmptyWardSchedule() {
+      return {
+        am: Array.from({ length: 5 }, createEmptyCell),
+        pm: Array.from({ length: 5 }, createEmptyCell)
+      };
+    }
+
+    /**
+     * 建立 113 下半年完整範本資料
+     */
+    function build113H2Template(yearOverride = 114, halfOverride = 'H1') {
+      const therapists = [
+        { id: 't_ou', short: '歐', name: '歐俞宏', ...MORANDI_PALETTE[0], startActivityIndex: 4 },
+        { id: 't_chen', short: '陳', name: '陳雅玲', ...MORANDI_PALETTE[1], startActivityIndex: 0 },
+        { id: 't_lin', short: '林', name: '林昱呈', ...MORANDI_PALETTE[2], startActivityIndex: 5 },
+        { id: 't_chang', short: '張', name: '張祐銓', ...MORANDI_PALETTE[3], startActivityIndex: 3 },
+        { id: 't_wu', short: '吳', name: '吳沁縈', ...MORANDI_PALETTE[4], startActivityIndex: 1 },
+        { id: 't_yi', short: '儀', name: '林美儀', ...MORANDI_PALETTE[5], startActivityIndex: 6 },
+        { id: 't_huang', short: '黃', name: '黃玠璋', ...MORANDI_PALETTE[6], startActivityIndex: 2 }
+      ];
+
+      const makeCell = (tIds = [], tags = [], customNote = '') => ({
+        therapistIds: [...tIds],
+        tags: [...tags],
+        customNote
+      });
+
+      const wards = [
+        {
+          id: '8W', name: '8W', otId: 't_wu', wrTime: 'WR-14:15',
+          schedule: {
+            am: [makeCell(['t_lin']), makeCell(), makeCell(['t_chen']), makeCell(['t_ou']), makeCell()],
+            pm: [makeCell(['t_wu']), makeCell([], ['WR']), makeCell(['t_chang']), makeCell(['t_yi']), makeCell(['t_huang'])]
+          }
+        },
+        {
+          id: '9W', name: '9W', otId: 't_chen', wrTime: 'WR-11:00',
+          schedule: {
+            am: [makeCell(['t_huang']), makeCell(['t_yi']), makeCell(['t_lin'], ['WR']), makeCell(['t_wu']), makeCell()],
+            pm: [makeCell(['t_chen']), makeCell(), makeCell(['t_ou']), makeCell(['t_chang']), makeCell(['t_chen'])]
+          }
+        },
+        {
+          id: '10W', name: '10W', otId: 't_ou', wrTime: 'WR-14:00',
+          schedule: {
+            am: [makeCell(['t_chang']), makeCell(['t_wu']), makeCell(['t_huang']), makeCell(['t_yi']), makeCell()],
+            pm: [makeCell(['t_ou'], ['WR']), makeCell(), makeCell(['t_chen']), makeCell(['t_lin']), makeCell(['t_ou'])]
+          }
+        },
+        {
+          id: '11W', name: '11W', otId: 't_ou', wrTime: 'WR-11:00',
+          schedule: {
+            am: [makeCell(['t_wu']), makeCell(['t_lin']), makeCell([], ['WR']), makeCell(['t_chen']), makeCell()],
+            pm: [makeCell(['t_chang']), makeCell(), makeCell(['t_huang']), makeCell(['t_ou']), makeCell(['t_ou'])]
+          }
+        },
+        {
+          id: '12W', name: '12W', otId: 't_lin', wrTime: 'WR-16:00',
+          schedule: {
+            am: [makeCell(['t_yi']), makeCell(['t_chen']), makeCell(['t_chang']), makeCell(['t_lin']), makeCell(['t_ou'])],
+            pm: [makeCell(['t_huang'], ['WR']), makeCell(), makeCell(), makeCell(['t_wu']), makeCell(['t_lin'])]
+          }
+        }
+      ];
+
+      const evalIcf = {
+        amEval: [
+          [{ therapistId: 't_chang', time: '9:00', campus: '' }],
+          [],
+          [{ therapistId: 't_yi', time: '10:00', campus: '' }],
+          [],
+          [{ therapistId: 't_lin', time: '9:00', campus: '' }]
+        ],
+        amIcf: [
+          [],
+          [{ therapistId: 't_wu', time: '9:00', campus: '' }],
+          [{ therapistId: 't_yi', time: '8:30', campus: '' }],
+          [{ therapistId: 't_ou', time: '8:30', campus: '' }],
+          []
+        ],
+        pmEval: [
+          [{ therapistId: 't_ou', time: '15:30', campus: '' }],
+          [],
+          [{ therapistId: 't_wu', time: '15:30', campus: '' }],
+          [{ therapistId: 't_chen', time: '15:30', campus: '' }],
+          []
+        ],
+        pmIcf: [
+          [{ therapistId: 't_lin', time: '14:00', campus: '' }],
+          [],
+          [{ therapistId: 't_chen', time: '14:00', campus: '' }],
+          [{ therapistId: 't_chang', time: '16:00', campus: '' }],
+          []
+        ]
+      };
+
+      const rehab = {
+        amGarden: ['t_lin', 't_yi', 't_lin', 't_yi', 't_huang'],
+        amSweep:  ['t_huang', 't_huang', 't_chen', 't_chen', 't_wu'],
+        pmGarden: ['t_chang', '', 't_ou', 't_wu', 't_wu'],
+        pmSweep:  ['t_yi', '', 't_chang', 't_lin', 't_ou']
+      };
+
+      const personalExtra = {};
+      therapists.forEach(t => {
+        personalExtra[t.id] = {
+          am: [[], [], [], [], []],
+          pm: [[], [], [], [], []]
+        };
+      });
+      personalExtra['t_chang'].am[1] = ['戒治'];
+      personalExtra['t_chang'].am[3] = ['巡迴'];
+      personalExtra['t_huang'].am[3] = ['巡迴'];
+      personalExtra['t_yi'].am[4] = ['兒心'];
+      personalExtra['t_yi'].pm[2] = ['兒心'];
+
+      return {
+        year: yearOverride,
+        half: halfOverride,
+        therapists,
+        activities: ['KTV', '美術', '電影', '文藝', '體能', '音欣', '讀報'],
+        wards,
+        evalIcf,
+        rehab,
+        personalExtra,
+        recordOrder: '歐黃陳吳林張儀',
+        recordCurrent: '儀 歐 吳',
+        footerNote: '評：斗六 ／ 虎：虎尾'
+      };
+    }
+
+    // =========================================================================
+    // 2. 系統狀態管理 (State & Persistence)
+    // =========================================================================
+    let state = null;
+    let activeTab = 'wards';
+    // brush: { mode: 'edit' | 'therapist' | 'tag' | 'eraser', value: string }
+    let activeBrush = { mode: 'edit', value: '' };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.therapists) && Array.isArray(parsed.wards)) {
+            state = parsed;
+            ensurePersonalExtraKeys();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('無法讀取 localStorage，載入預設範本', e);
+      }
+      state = build113H2Template(114, 'H1');
+      saveState(false);
+    }
+
+    function ensurePersonalExtraKeys() {
+      if (!state.personalExtra) state.personalExtra = {};
+      state.therapists.forEach(t => {
+        if (!state.personalExtra[t.id]) {
+          state.personalExtra[t.id] = {
+            am: [[], [], [], [], []],
+            pm: [[], [], [], [], []]
+          };
+        }
+      });
+    }
+
+    function saveState(showIndicator = false) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (showIndicator) showToast('已自動儲存變更', 'success');
+      } catch (e) {
+        console.error('儲存失敗', e);
+        showToast('瀏覽器儲存空間不足，請改用「存專案」備份', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 3. 工具函式 (Helpers & Conflict Detection)
+    // =========================================================================
+    function getTherapist(id) {
+      return state.therapists.find(t => t.id === id) || null;
+    }
+
+    function getPeriods() {
+      return state.half === 'H1'
+        ? { label: '1~6月', cols: ['1-2月', '3-4月', '5-6月'] }
+        : { label: '7~12月', cols: ['7-8月', '9-10月', '11-12月'] };
+    }
+
+    function getTherapistRotation(therapist) {
+      const acts = state.activities;
+      const len = acts.length || 1;
+      const start = ((therapist.startActivityIndex || 0) % len + len) % len;
+      return [
+        acts[start % len] || '',
+        acts[(start + 1) % len] || '',
+        acts[(start + 2) % len] || ''
+      ];
+    }
+
+    /**
+     * 計算所有時段的衝堂狀態
+     * 回傳 Map: key = `${therapistId}_${period}_${dayIdx}` -> { reasons: string[], wards: string[], extras: string[] }
+     */
+    function detectConflicts() {
+      const slotMap = {}; // `${tId}_${period}_${dayIdx}` -> { wards: [], extras: [] }
+
+      state.wards.forEach(w => {
+        ['am', 'pm'].forEach(period => {
+          for (let d = 0; d < 5; d++) {
+            const cell = w.schedule[period][d];
+            cell.therapistIds.forEach(tId => {
+              const key = `${tId}_${period}_${d}`;
+              if (!slotMap[key]) slotMap[key] = { wards: [], extras: [] };
+              slotMap[key].wards.push(w.name);
+            });
+          }
+        });
+      });
+
+      state.therapists.forEach(t => {
+        const extra = state.personalExtra[t.id];
+        if (!extra) return;
+        ['am', 'pm'].forEach(period => {
+          for (let d = 0; d < 5; d++) {
+            const items = extra[period][d] || [];
+            const conflicting = items.filter(item => CONFLICT_EXTRAS.some(ce => item.includes(ce)));
+            if (conflicting.length > 0) {
+              const key = `${t.id}_${period}_${d}`;
+              if (!slotMap[key]) slotMap[key] = { wards: [], extras: [] };
+              slotMap[key].extras.push(...conflicting);
+            }
+          }
+        });
+      });
+
+      const conflicts = {};
+      Object.entries(slotMap).forEach(([key, info]) => {
+        const reasons = [];
+        if (info.wards.length > 1) {
+          reasons.push(`重複排入 ${info.wards.join('、')}`);
+        }
+        if (info.wards.length >= 1 && info.extras.length > 0) {
+          reasons.push(`與業務「${info.extras.join('、')}」衝突`);
+        }
+        if (reasons.length > 0) {
+          conflicts[key] = { ...info, reasons };
+        }
+      });
+
+      return conflicts;
+    }
+
+    /**
+     * 統計每位治療師本週工作量
+     */
+    function calculateStats() {
+      const stats = {};
+      state.therapists.forEach(t => {
+        stats[t.id] = { wards: 0, eval: 0, icf: 0, rehab: 0 };
+      });
+
+      // 病房次數
+      state.wards.forEach(w => {
+        ['am', 'pm'].forEach(p => {
+          for (let d = 0; d < 5; d++) {
+            w.schedule[p][d].therapistIds.forEach(tId => {
+              if (stats[tId]) stats[tId].wards++;
+            });
+          }
+        });
+      });
+
+      // 評估與 ICF
+      ['amEval', 'pmEval'].forEach(k => {
+        state.evalIcf[k].forEach(dayList => {
+          dayList.forEach(item => {
+            if (stats[item.therapistId]) stats[item.therapistId].eval++;
+          });
+        });
+      });
+      ['amIcf', 'pmIcf'].forEach(k => {
+        state.evalIcf[k].forEach(dayList => {
+          dayList.forEach(item => {
+            if (stats[item.therapistId]) stats[item.therapistId].icf++;
+          });
+        });
+      });
+
+      // 復工
+      ['amGarden', 'amSweep', 'pmGarden', 'pmSweep'].forEach(k => {
+        state.rehab[k].forEach(tId => {
+          if (tId && stats[tId]) stats[tId].rehab++;
+        });
+      });
+
+      return stats;
+    }
+
+    /**
+     * 取得某治療師在特定 (period, dayIdx) 的所有早務/晚務項目（合併復工、評估ICF、個人額外）
+     */
+    function getPersonalSideTasks(therapistId, period, dayIdx) {
+      const tasks = [];
+      // 1. 復工
+      if (period === 'am') {
+        if (state.rehab.amGarden[dayIdx] === therapistId) tasks.push({ text: '園', type: 'rehab' });
+        if (state.rehab.amSweep[dayIdx] === therapistId) tasks.push({ text: '掃', type: 'rehab' });
+      } else {
+        if (state.rehab.pmGarden[dayIdx] === therapistId) tasks.push({ text: '園', type: 'rehab' });
+        if (state.rehab.pmSweep[dayIdx] === therapistId) tasks.push({ text: '掃', type: 'rehab' });
+      }
+
+      // 2. 評估與 ICF
+      const evalKey = period === 'am' ? 'amEval' : 'pmEval';
+      const icfKey = period === 'am' ? 'amIcf' : 'pmIcf';
+      state.evalIcf[evalKey][dayIdx].forEach(item => {
+        if (item.therapistId === therapistId) {
+          const campusStr = item.campus ? item.campus : '';
+          tasks.push({ text: `評${campusStr}${item.time ? ' ' + item.time : ''}`, type: 'eval' });
+        }
+      });
+      state.evalIcf[icfKey][dayIdx].forEach(item => {
+        if (item.therapistId === therapistId) {
+          const campusStr = item.campus ? item.campus : '';
+          tasks.push({ text: `ICF${campusStr}${item.time ? ' ' + item.time : ''}`, type: 'icf' });
+        }
+      });
+
+      // 3. 個人額外業務
+      const extras = state.personalExtra[therapistId]?.[period]?.[dayIdx] || [];
+      extras.forEach(ex => {
+        const isConflict = CONFLICT_EXTRAS.some(c => ex.includes(c));
+        tasks.push({ text: ex, type: isConflict ? 'extra-important' : 'extra' });
+      });
+
+      return tasks;
+    }
+
+    /**
+     * 取得某治療師在特定 (period, dayIdx) 的病房清單
+     */
+    function getPersonalWardTasks(therapistId, period, dayIdx) {
+      const list = [];
+      state.wards.forEach(w => {
+        const cell = w.schedule[period][dayIdx];
+        if (cell.therapistIds.includes(therapistId)) {
+          const extraTags = cell.tags.length > 0 ? `(${cell.tags.join('/')})` : '';
+          list.push(w.name + extraTags);
+        }
+      });
+      return list;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // =========================================================================
+    // 4. 分頁切換與整體渲染 (Render All)
+    // =========================================================================
+    function switchTab(tabName) {
+      activeTab = tabName;
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.className = 'tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap flex items-center gap-1.5 bg-morandi-teal text-white shadow-sm';
+        } else {
+          btn.className = 'tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap flex items-center gap-1.5 text-slate-600 hover:bg-cream-100';
+        }
+      });
+
+      renderAll();
+    }
+
+    function renderAll() {
+      // 同步頂部控制項
+      document.getElementById('yearInput').value = state.year;
+      document.getElementById('halfSelect').value = state.half;
+
+      const conflicts = detectConflicts();
+      const conflictCount = Object.keys(conflicts).length;
+
+      // 更新 Tab 1 衝堂徽章
+      const badge = document.getElementById('tabConflictBadge');
+      if (conflictCount > 0) {
+        badge.textContent = conflictCount;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      if (activeTab === 'wards') {
+        renderBrushToolbar();
+        renderConflictBanner(conflicts);
+        renderWardsGrid(conflicts);
+        renderStatsGrid(conflicts);
+      } else if (activeTab === 'personal') {
+        renderPersonalSchedules(conflicts);
+        renderEvalIcfTable();
+        renderRehabTable();
+        document.getElementById('recordOrderInput').value = state.recordOrder || '';
+        document.getElementById('recordCurrentInput').value = state.recordCurrent || '';
+        document.getElementById('footerNoteInput').value = state.footerNote || '';
+      } else if (activeTab === 'rotation') {
+        renderActivitySequenceEditor();
+        renderTherapistRotationTable();
+        renderAnnouncementsPreview();
+      } else if (activeTab === 'settings') {
+        renderTherapistSettings();
+      }
+    }
+
+    // =========================================================================
+    // 5. TAB 1 渲染與互動：各病房活動排程
+    // =========================================================================
+    function setBrush(mode, value = '') {
+      activeBrush = { mode, value };
+      renderBrushToolbar();
+    }
+
+    function renderBrushToolbar() {
+      const container = document.getElementById('brushToolbar');
+      const hint = document.getElementById('activeBrushHint');
+      let html = '';
+
+      // 編輯/檢視模式按鈕
+      const isEdit = activeBrush.mode === 'edit';
+      html += `
+        <button onclick="setBrush('edit')"
+          class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition flex items-center gap-1.5 ${isEdit ? 'bg-slate-800 text-white border-slate-800 brush-active' : 'bg-cream-50 text-slate-700 border-cream-300 hover:bg-cream-100'}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+          <span>編輯視窗模式</span>
+        </button>
+        <div class="h-6 w-px bg-cream-200 mx-0.5"></div>
+      `;
+
+      // 治療師畫筆按鈕
+      state.therapists.forEach(t => {
+        const active = activeBrush.mode === 'therapist' && activeBrush.value === t.id;
+        html += `
+          <button onclick="setBrush('therapist', '${t.id}')"
+            style="background-color: ${active ? t.color : t.bg}; color: ${active ? '#FFFFFF' : t.color}; border-color: ${t.border};"
+            class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center gap-1.5 ${active ? 'brush-active' : 'hover:opacity-90'}">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-extrabold"
+              style="background-color: ${active ? 'rgba(255,255,255,0.25)' : t.color}; color: #fff;">${escapeHtml(t.short)}</span>
+            <span>${escapeHtml(t.name)}</span>
+          </button>
+        `;
+      });
+
+      html += `<div class="h-6 w-px bg-cream-200 mx-0.5"></div>`;
+
+      // 常用特殊標籤畫筆
+      SPECIAL_TAGS.forEach(tag => {
+        const active = activeBrush.mode === 'tag' && activeBrush.value === tag;
+        const isWR = tag === 'WR';
+        html += `
+          <button onclick="setBrush('tag', '${tag}')"
+            class="px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition ${
+              active
+                ? (isWR ? 'bg-sky-600 text-white border-sky-600 brush-active' : 'bg-morandi-warm text-white border-morandi-warm brush-active')
+                : (isWR ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100' : 'bg-morandi-warmLight text-amber-800 border-amber-200 hover:bg-amber-100')
+            }">
+            ${escapeHtml(tag)}
+          </button>
+        `;
+      });
+
+      // 橡皮擦
+      const isEraser = activeBrush.mode === 'eraser';
+      html += `
+        <button onclick="setBrush('eraser')"
+          class="px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition flex items-center gap-1 ${isEraser ? 'bg-morandi-red text-white border-morandi-red brush-active' : 'bg-white text-morandi-red border-red-200 hover:bg-morandi-redLight'}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          <span>清除格</span>
+        </button>
+      `;
+
+      container.innerHTML = html;
+
+      // 更新提示文字
+      if (activeBrush.mode === 'edit') {
+        hint.textContent = '目前為「編輯視窗模式」：點擊任意病房格子可開啟詳細編輯視窗';
+      } else if (activeBrush.mode === 'therapist') {
+        const t = getTherapist(activeBrush.value);
+        hint.textContent = `畫筆模式：點選任意格子即可填入／取消「${t ? t.name : ''}」`;
+      } else if (activeBrush.mode === 'tag') {
+        hint.textContent = `畫筆模式：點選任意格子即可加上／移除「${activeBrush.value}」標籤`;
+      } else if (activeBrush.mode === 'eraser') {
+        hint.textContent = '清除模式：點選任意格子即可清空該時段內容';
+      }
+    }
+
+    function renderConflictBanner(conflicts) {
+      const banner = document.getElementById('conflictBanner');
+      const title = document.getElementById('conflictBannerTitle');
+      const list = document.getElementById('conflictBannerList');
+      const entries = Object.entries(conflicts);
+
+      if (entries.length === 0) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('hidden');
+      title.textContent = `偵測到 ${entries.length} 處排班衝堂：`;
+
+      list.innerHTML = entries.map(([key, info]) => {
+        const [tId, period, dayIdx] = key.split('_');
+        const t = getTherapist(tId);
+        const pLabel = period === 'am' ? '上午' : '下午';
+        return `<span class="px-2 py-0.5 rounded-lg bg-white border border-red-200 font-medium">
+          ${t ? escapeHtml(t.name) : ''}（週${DAYS[dayIdx]}${pLabel}）：${escapeHtml(info.reasons.join('；'))}
+        </span>`;
+      }).join('');
+    }
+
+    function renderWardsGrid(conflicts) {
+      const grid = document.getElementById('wardsGrid');
+      const html = state.wards.map((w, wIdx) => {
+        const otOptions = state.therapists.map(t =>
+          `<option value="${t.id}" ${w.otId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
+        ).join('');
+
+        const buildRow = (period, label) => {
+          const cells = DAYS.map((_, dIdx) => {
+            const cell = w.schedule[period][dIdx];
+            // 檢查此格是否有任何治療師衝堂
+            const cellConflicts = [];
+            cell.therapistIds.forEach(tId => {
+              const cKey = `${tId}_${period}_${dIdx}`;
+              if (conflicts[cKey]) {
+                const t = getTherapist(tId);
+                cellConflicts.push(`${t ? t.short : ''}: ${conflicts[cKey].reasons.join('、')}`);
+              }
+            });
+            const hasConflict = cellConflicts.length > 0;
+
+            const tBadges = cell.therapistIds.map(tId => {
+              const t = getTherapist(tId);
+              if (!t) return '';
+              return `<span class="inline-flex items-center justify-center px-2 py-0.5 rounded-lg text-xs sm:text-sm font-bold border shadow-xs"
+                style="background-color:${t.bg}; color:${t.color}; border-color:${t.border};">${escapeHtml(t.short)}</span>`;
+            }).join('');
+
+            const tagBadges = cell.tags.map(tag => {
+              const isWR = tag === 'WR';
+              return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold ${isWR ? 'bg-sky-100 text-sky-800 border border-sky-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}">${escapeHtml(tag)}</span>`;
+            }).join('');
+
+            const noteHtml = cell.customNote
+              ? `<div class="text-[11px] text-slate-600 font-medium leading-tight mt-0.5 truncate max-w-[78px]" title="${escapeHtml(cell.customNote)}">${escapeHtml(cell.customNote)}</div>`
+              : '';
+
+            const isEmpty = cell.therapistIds.length === 0 && cell.tags.length === 0 && !cell.customNote;
+
+            return `
+              <td onclick="handleWardCellClick(${wIdx}, '${period}', ${dIdx})"
+                title="${hasConflict ? '衝堂警告：' + escapeHtml(cellConflicts.join(' | ')) : '點擊排班或編輯'}"
+                class="border border-cream-200 p-1.5 sm:p-2 text-center align-middle cursor-pointer select-none min-w-[68px] h-[64px] relative cell-hover ${hasConflict ? 'conflict-cell' : 'bg-white'}">
+                ${hasConflict ? `<span class="absolute top-0.5 right-0.5 text-morandi-red" title="${escapeHtml(cellConflicts.join(' | '))}">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                </span>` : ''}
+                ${isEmpty
+                  ? `<span class="text-cream-300 text-xs">—</span>`
+                  : `<div class="flex flex-wrap items-center justify-center gap-1">${tBadges}${tagBadges}</div>${noteHtml}`
+                }
+              </td>
+            `;
+          }).join('');
+
+          return `
+            <tr>
+              <th class="border border-cream-200 bg-cream-50 text-slate-600 font-bold text-xs py-2 px-2 w-12">${label}</th>
+              ${cells}
+            </tr>
+          `;
+        };
+
+        return `
+          <div class="bg-white rounded-2xl border border-cream-200 shadow-sm overflow-hidden flex flex-col">
+            <div class="px-4 py-2.5 bg-morandi-tealLight/60 border-b border-cream-200 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-lg bg-morandi-teal text-white font-extrabold text-sm tracking-wide">${escapeHtml(w.name)}</span>
+                <div class="flex items-center gap-1.5 text-xs">
+                  <span class="text-slate-600 font-medium">負責OT:</span>
+                  <select onchange="updateWardMeta(${wIdx}, 'otId', this.value)"
+                    class="bg-white border border-cream-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
+                    <option value="">未指派</option>
+                    ${otOptions}
+                  </select>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs">
+                <span class="text-slate-500 font-medium">WR時間:</span>
+                <input type="text" value="${escapeHtml(w.wrTime)}" onchange="updateWardMeta(${wIdx}, 'wrTime', this.value)"
+                  class="w-28 bg-white border border-cream-300 rounded-lg px-2 py-1 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+                  placeholder="WR-14:15" />
+              </div>
+            </div>
+            <div class="p-2.5 overflow-x-auto">
+              <table class="w-full border-collapse rounded-xl overflow-hidden">
+                <thead>
+                  <tr class="bg-cream-50 text-slate-600 text-xs font-bold">
+                    <th class="border border-cream-200 py-1.5 px-2">時段</th>
+                    ${DAYS.map(d => `<th class="border border-cream-200 py-1.5 px-2">週${d}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${buildRow('am', '上午')}
+                  ${buildRow('pm', '下午')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      grid.innerHTML = html;
+    }
+
+    function updateWardMeta(wIdx, field, val) {
+      state.wards[wIdx][field] = val;
+      saveState();
+      showToast(`已更新 ${state.wards[wIdx].name} 設定`, 'success');
+    }
+
+    function handleWardCellClick(wIdx, period, dayIdx) {
+      const cell = state.wards[wIdx].schedule[period][dayIdx];
+
+      if (activeBrush.mode === 'edit') {
+        openWardCellModal(wIdx, period, dayIdx);
+        return;
+      }
+
+      if (activeBrush.mode === 'eraser') {
+        cell.therapistIds = [];
+        cell.tags = [];
+        cell.customNote = '';
+      } else if (activeBrush.mode === 'therapist') {
+        const tId = activeBrush.value;
+        const multi = document.getElementById('multiAssignToggle').checked;
+        const idx = cell.therapistIds.indexOf(tId);
+        if (idx >= 0) {
+          cell.therapistIds.splice(idx, 1);
+        } else {
+          if (multi) {
+            cell.therapistIds.push(tId);
+          } else {
+            cell.therapistIds = [tId];
+          }
+        }
+      } else if (activeBrush.mode === 'tag') {
+        const tag = activeBrush.value;
+        const idx = cell.tags.indexOf(tag);
+        if (idx >= 0) cell.tags.splice(idx, 1);
+        else cell.tags.push(tag);
+      }
+
+      saveState();
+      renderAll();
+    }
+
+    /**
+     * 病房格子進階編輯視窗
+     */
+    function openWardCellModal(wIdx, period, dayIdx) {
+      const ward = state.wards[wIdx];
+      const cell = ward.schedule[period][dayIdx];
+      const pLabel = period === 'am' ? '上午' : '下午';
+
+      const selectedT = new Set(cell.therapistIds);
+      const selectedTags = new Set(cell.tags);
+
+      const tButtons = state.therapists.map(t => {
+        const active = selectedT.has(t.id);
+        return `
+          <label class="flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition ${active ? 'bg-morandi-tealLight border-morandi-teal' : 'bg-white border-cream-200 hover:bg-cream-50'}">
+            <input type="checkbox" name="modalTherapist" value="${t.id}" ${active ? 'checked' : ''} class="rounded text-morandi-teal focus:ring-morandi-teal" />
+            <span class="w-6 h-6 rounded-full text-xs font-bold text-white flex items-center justify-center" style="background-color:${t.color}">${escapeHtml(t.short)}</span>
+            <span class="text-sm font-semibold text-slate-700">${escapeHtml(t.name)}</span>
+          </label>
+        `;
+      }).join('');
+
+      const tagButtons = SPECIAL_TAGS.map(tag => {
+        const active = selectedTags.has(tag);
+        return `
+          <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border cursor-pointer text-xs font-semibold transition ${active ? 'bg-amber-50 border-amber-400 text-amber-800' : 'bg-white border-cream-200 text-slate-600 hover:bg-cream-50'}">
+            <input type="checkbox" name="modalTag" value="${tag}" ${active ? 'checked' : ''} class="rounded text-morandi-teal focus:ring-morandi-teal" />
+            <span>${escapeHtml(tag)}</span>
+          </label>
+        `;
+      }).join('');
+
+      const bodyHtml = `
+        <div>
+          <p class="text-xs font-bold text-slate-500 uppercase mb-2">指派治療師（可複選）</p>
+          <div class="grid grid-cols-2 gap-2">${tButtons}</div>
+        </div>
+        <div>
+          <p class="text-xs font-bold text-slate-500 uppercase mb-2">特殊活動 / 標記</p>
+          <div class="flex flex-wrap gap-2">${tagButtons}</div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5">自訂備註（選填）</label>
+          <input id="modalCustomNote" type="text" value="${escapeHtml(cell.customNote)}"
+            class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+            placeholder="例如：實習生帶領、特別活動..." />
+        </div>
+      `;
+
+      const footerHtml = `
+        <button onclick="clearWardCellFromModal(${wIdx}, '${period}', ${dayIdx})" class="mr-auto px-3 py-1.5 text-xs font-semibold rounded-xl text-morandi-red hover:bg-morandi-redLight transition">清空此格</button>
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100 transition">取消</button>
+        <button onclick="saveWardCellFromModal(${wIdx}, '${period}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white transition">套用儲存</button>
+      `;
+
+      openModal(`${ward.name} — 週${DAYS[dayIdx]}${pLabel} 排班編輯`, bodyHtml, footerHtml);
+    }
+
+    function clearWardCellFromModal(wIdx, period, dayIdx) {
+      state.wards[wIdx].schedule[period][dayIdx] = createEmptyCell();
+      saveState();
+      closeModal();
+      renderAll();
+    }
+
+    function saveWardCellFromModal(wIdx, period, dayIdx) {
+      const tIds = Array.from(document.querySelectorAll('input[name="modalTherapist"]:checked')).map(el => el.value);
+      const tags = Array.from(document.querySelectorAll('input[name="modalTag"]:checked')).map(el => el.value);
+      const note = document.getElementById('modalCustomNote').value.trim();
+
+      state.wards[wIdx].schedule[period][dayIdx] = {
+        therapistIds: tIds,
+        tags,
+        customNote: note
+      };
+      saveState();
+      closeModal();
+      renderAll();
+    }
+
+    function renderStatsGrid(conflicts) {
+      const stats = calculateStats();
+      const grid = document.getElementById('statsGrid');
+
+      // 計算每人衝堂數
+      const conflictPerT = {};
+      Object.keys(conflicts).forEach(k => {
+        const tId = k.split('_')[0];
+        conflictPerT[tId] = (conflictPerT[tId] || 0) + 1;
+      });
+
+      grid.innerHTML = state.therapists.map(t => {
+        const s = stats[t.id] || { wards: 0, eval: 0, icf: 0, rehab: 0 };
+        const cNum = conflictPerT[t.id] || 0;
+        return `
+          <div class="rounded-xl border p-3 transition flex flex-col gap-2" style="background-color:${t.bg}66; border-color:${t.border};">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full text-xs font-bold text-white flex items-center justify-center" style="background-color:${t.color}">${escapeHtml(t.short)}</span>
+                <span class="text-sm font-bold text-slate-800">${escapeHtml(t.name)}</span>
+              </div>
+              ${cNum > 0 ? `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-morandi-red text-white">衝堂 ${cNum}</span>` : ''}
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-xs">
+              <div class="bg-white/90 rounded-lg px-2 py-1 flex justify-between items-center border border-cream-200">
+                <span class="text-slate-500">病房</span>
+                <span class="font-bold text-morandi-tealDark">${s.wards}</span>
+              </div>
+              <div class="bg-white/90 rounded-lg px-2 py-1 flex justify-between items-center border border-cream-200">
+                <span class="text-slate-500">復工</span>
+                <span class="font-bold text-emerald-700">${s.rehab}</span>
+              </div>
+              <div class="bg-white/90 rounded-lg px-2 py-1 flex justify-between items-center border border-cream-200">
+                <span class="text-slate-500">評估</span>
+                <span class="font-bold text-amber-700">${s.eval}</span>
+              </div>
+              <div class="bg-white/90 rounded-lg px-2 py-1 flex justify-between items-center border border-cream-200">
+                <span class="text-slate-500">ICF</span>
+                <span class="font-bold text-indigo-700">${s.icf}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 6. TAB 2 渲染與互動：個人課表 / 評估 ICF / 復健工作
+    // =========================================================================
+    function renderPersonalSchedules(conflicts) {
+      const container = document.getElementById('personalSchedulesGrid');
+
+      container.innerHTML = state.therapists.map(t => {
+        const buildSideRow = (period, label) => {
+          const tds = DAYS.map((_, dIdx) => {
+            const tasks = getPersonalSideTasks(t.id, period, dIdx);
+            const badges = tasks.map(tk => {
+              let cls = 'bg-slate-100 text-slate-700 border-slate-200';
+              if (tk.type === 'rehab') cls = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+              else if (tk.type === 'eval') cls = 'bg-amber-50 text-amber-800 border-amber-200';
+              else if (tk.type === 'icf') cls = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+              else if (tk.type === 'extra-important') cls = 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
+              return `<span class="inline-block px-1.5 py-0.5 rounded text-[11px] border leading-tight ${cls}">${escapeHtml(tk.text)}</span>`;
+            }).join('');
+
+            return `
+              <td onclick="openPersonalExtraModal('${t.id}', '${period}', ${dIdx})"
+                class="border border-cream-200 p-1.5 text-center align-middle cursor-pointer cell-hover bg-cream-50/40 min-h-[38px]"
+                title="點擊編輯${label}額外業務">
+                <div class="flex flex-wrap justify-center gap-1">
+                  ${badges || '<span class="text-cream-300 text-[10px]">+</span>'}
+                </div>
+              </td>
+            `;
+          }).join('');
+
+          return `<tr><th class="border border-cream-200 bg-cream-50 text-[11px] text-slate-500 font-semibold py-1.5 px-1.5 w-12">${label}</th>${tds}</tr>`;
+        };
+
+        const buildWardRow = (period, label) => {
+          const tds = DAYS.map((_, dIdx) => {
+            const wards = getPersonalWardTasks(t.id, period, dIdx);
+            const hasConflict = Boolean(conflicts[`${t.id}_${period}_${dIdx}`]);
+            const content = wards.map(wName =>
+              `<span class="inline-block px-2 py-0.5 rounded-md text-xs font-bold" style="background-color:${t.bg}; color:${t.color};">${escapeHtml(wName)}</span>`
+            ).join('');
+
+            return `
+              <td class="border border-cream-200 p-1.5 text-center align-middle ${hasConflict ? 'conflict-cell' : 'bg-white'}">
+                <div class="flex flex-wrap justify-center gap-1">${content || '<span class="text-cream-300 text-xs">—</span>'}</div>
+              </td>
+            `;
+          }).join('');
+
+          return `<tr><th class="border border-cream-200 bg-white text-xs text-slate-700 font-bold py-2 px-1.5 w-12">${label}</th>${tds}</tr>`;
+        };
+
+        return `
+          <div class="bg-white rounded-2xl border border-cream-200 shadow-sm overflow-hidden">
+            <div class="px-4 py-2 border-b border-cream-200 flex items-center justify-between" style="background-color:${t.bg}88;">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full text-xs font-bold text-white flex items-center justify-center" style="background-color:${t.color}">${escapeHtml(t.short)}</span>
+                <span class="text-sm font-bold text-slate-800">${escapeHtml(t.name)}</span>
+              </div>
+              <span class="text-[11px] text-slate-500">點選「早務／晚務」可編輯額外業務</span>
+            </div>
+            <div class="p-2 overflow-x-auto">
+              <table class="w-full border-collapse">
+                <thead>
+                  <tr class="bg-cream-50 text-xs text-slate-600 font-bold">
+                    <th class="border border-cream-200 py-1 px-1.5">項目</th>
+                    ${DAYS.map(d => `<th class="border border-cream-200 py-1 px-2">週${d}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${buildSideRow('am', '早務')}
+                  ${buildWardRow('am', '上午')}
+                  ${buildWardRow('pm', '下午')}
+                  ${buildSideRow('pm', '晚務')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openPersonalExtraModal(therapistId, period, dayIdx) {
+      const t = getTherapist(therapistId);
+      if (!t) return;
+      ensurePersonalExtraKeys();
+      const currentExtras = [...(state.personalExtra[therapistId][period][dayIdx] || [])];
+      const pLabel = period === 'am' ? '上午（早務）' : '下午（晚務）';
+
+      const quickHtml = QUICK_EXTRAS.map(q => {
+        const checked = currentExtras.includes(q);
+        return `
+          <label class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition ${checked ? 'bg-morandi-tealLight border-morandi-teal text-morandi-tealDark' : 'bg-white border-cream-200 text-slate-600 hover:bg-cream-50'}">
+            <input type="checkbox" name="modalExtraQuick" value="${q}" ${checked ? 'checked' : ''} class="rounded text-morandi-teal" />
+            <span>${escapeHtml(q)}</span>
+          </label>
+        `;
+      }).join('');
+
+      const customList = currentExtras.filter(x => !QUICK_EXTRAS.includes(x)).join('、');
+
+      const bodyHtml = `
+        <p class="text-xs text-slate-500">註：復工（園／掃）與評估／ICF 請於下方對應總表設定，此處管理額外業務項目。</p>
+        <div>
+          <p class="text-xs font-bold text-slate-600 mb-2">常用額外業務（可複選）</p>
+          <div class="flex flex-wrap gap-2">${quickHtml}</div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">其他自訂項目（多項請用頓號或逗號分隔）</label>
+          <input id="modalExtraCustom" type="text" value="${escapeHtml(customList)}"
+            class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+            placeholder="例如：9WR、實習討論" />
+        </div>
+      `;
+
+      const footerHtml = `
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button onclick="savePersonalExtraModal('${therapistId}', '${period}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存</button>
+      `;
+
+      openModal(`${t.name} — 週${DAYS[dayIdx]} ${pLabel} 額外業務`, bodyHtml, footerHtml);
+    }
+
+    function savePersonalExtraModal(therapistId, period, dayIdx) {
+      const checked = Array.from(document.querySelectorAll('input[name="modalExtraQuick"]:checked')).map(el => el.value);
+      const customRaw = document.getElementById('modalExtraCustom').value.trim();
+      const customItems = customRaw ? customRaw.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean) : [];
+      state.personalExtra[therapistId][period][dayIdx] = [...new Set([...checked, ...customItems])];
+      saveState();
+      closeModal();
+      renderAll();
+    }
+
+    /**
+     * 評估與 ICF 總表渲染與編輯
+     */
+    function renderEvalIcfTable() {
+      const table = document.getElementById('evalIcfTable');
+      const rows = [
+        { key: 'amEval', label: '上午評估', badgeCls: 'bg-amber-50 text-amber-800 border-amber-200' },
+        { key: 'amIcf',  label: '上午 ICF', badgeCls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+        { key: 'pmEval', label: '下午評估', badgeCls: 'bg-amber-50 text-amber-800 border-amber-200' },
+        { key: 'pmIcf',  label: '下午 ICF', badgeCls: 'bg-indigo-50 text-indigo-700 border-indigo-200' }
+      ];
+
+      let html = `
+        <thead>
+          <tr class="bg-cream-50 text-slate-600 font-bold text-xs">
+            <th class="border border-cream-200 py-2 px-2 w-20">類別</th>
+            ${DAYS.map(d => `<th class="border border-cream-200 py-2 px-2">週${d}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      rows.forEach(r => {
+        html += `<tr><th class="border border-cream-200 bg-cream-50/70 text-slate-700 font-bold text-xs py-2 px-2">${r.label}</th>`;
+        for (let d = 0; d < 5; d++) {
+          const items = state.evalIcf[r.key][d] || [];
+          const pills = items.map(it => {
+            const t = getTherapist(it.therapistId);
+            const tName = t ? t.short : '?';
+            return `<div class="px-1.5 py-0.5 rounded-md border text-[11px] font-semibold leading-tight ${r.badgeCls}">
+              ${escapeHtml(tName)}${it.campus ? escapeHtml(it.campus) : ''} ${escapeHtml(it.time)}
+            </div>`;
+          }).join('');
+          html += `
+            <td onclick="openEvalIcfModal('${r.key}', '${r.label}', ${d})"
+              class="border border-cream-200 p-1.5 text-center align-middle cursor-pointer cell-hover bg-white min-w-[82px] h-[54px]">
+              <div class="flex flex-col items-center justify-center gap-1">
+                ${pills || '<span class="text-cream-300 text-xs">+</span>'}
+              </div>
+            </td>
+          `;
+        }
+        html += `</tr>`;
+      });
+
+      html += `</tbody>`;
+      table.innerHTML = html;
+    }
+
+    let tempEvalItems = [];
+    function openEvalIcfModal(rowKey, rowLabel, dayIdx) {
+      tempEvalItems = JSON.parse(JSON.stringify(state.evalIcf[rowKey][dayIdx] || []));
+      renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
+    }
+
+    function renderEvalIcfModalContent(rowKey, rowLabel, dayIdx) {
+      const listHtml = tempEvalItems.length === 0
+        ? `<div class="text-xs text-slate-400 text-center py-3 bg-cream-50 rounded-xl border border-dashed border-cream-300">目前尚未排入人員，請於下方新增</div>`
+        : tempEvalItems.map((it, idx) => {
+            const t = getTherapist(it.therapistId);
+            return `
+              <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-cream-50 border border-cream-200">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <span class="w-6 h-6 rounded-full text-xs text-white flex items-center justify-center" style="background-color:${t ? t.color : '#888'}">${t ? escapeHtml(t.short) : '?'}</span>
+                  <span>${t ? escapeHtml(t.name) : '未知'}</span>
+                  ${it.campus ? `<span class="px-1.5 py-0.5 text-xs rounded bg-morandi-tealLight text-morandi-tealDark">${escapeHtml(it.campus)}</span>` : ''}
+                  <span class="text-slate-600">${escapeHtml(it.time)}</span>
+                </div>
+                <button onclick="removeTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx}, ${idx})" class="text-xs text-morandi-red hover:underline font-medium">移除</button>
+              </div>
+            `;
+          }).join('');
+
+      const tOptions = state.therapists.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${escapeHtml(t.short)})</option>`).join('');
+      const timeChips = QUICK_TIMES.map(tm =>
+        `<button type="button" onclick="document.getElementById('evalTimeInput').value='${tm}'" class="px-2 py-0.5 rounded-lg bg-cream-100 hover:bg-morandi-tealLight text-xs text-slate-700 border border-cream-300">${tm}</button>`
+      ).join('');
+
+      const bodyHtml = `
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500">已指派清單</p>
+          ${listHtml}
+        </div>
+        <div class="p-3.5 rounded-xl bg-cream-50 border border-cream-200 space-y-3">
+          <p class="text-xs font-bold text-slate-700">新增指派</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">治療師</label>
+              <select id="evalTherapistSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">${tOptions}</select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">院區（選填）</label>
+              <select id="evalCampusSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">
+                <option value="">不指定</option>
+                <option value="斗">斗（斗六）</option>
+                <option value="虎">虎（虎尾）</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">時間</label>
+            <input id="evalTimeInput" type="text" value="${rowKey.startsWith('am') ? '9:00' : '15:30'}"
+              class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl mb-2" placeholder="例如：9:00 或 15:30" />
+            <div class="flex flex-wrap gap-1">${timeChips}</div>
+          </div>
+          <button type="button" onclick="addTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx})"
+            class="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition">
+            + 加入清單
+          </button>
+        </div>
+      `;
+
+      const footerHtml = `
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button onclick="saveEvalIcfModal('${rowKey}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存變更</button>
+      `;
+
+      openModal(`${rowLabel} — 週${DAYS[dayIdx]}`, bodyHtml, footerHtml);
+    }
+
+    function addTempEvalItem(rowKey, rowLabel, dayIdx) {
+      const therapistId = document.getElementById('evalTherapistSelect').value;
+      const campus = document.getElementById('evalCampusSelect').value;
+      const time = document.getElementById('evalTimeInput').value.trim();
+      if (!therapistId) return;
+      tempEvalItems.push({ therapistId, campus, time });
+      renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
+    }
+
+    function removeTempEvalItem(rowKey, rowLabel, dayIdx, idx) {
+      tempEvalItems.splice(idx, 1);
+      renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
+    }
+
+    function saveEvalIcfModal(rowKey, dayIdx) {
+      state.evalIcf[rowKey][dayIdx] = tempEvalItems;
+      saveState();
+      closeModal();
+      renderAll();
+    }
+
+    /**
+     * 復健工作 (復工) 總表渲染與互動
+     */
+    function renderRehabTable() {
+      const table = document.getElementById('rehabTable');
+      const rows = [
+        { key: 'amGarden', label: '上午園藝' },
+        { key: 'amSweep',  label: '上午掃地' },
+        { key: 'pmGarden', label: '下午園藝' },
+        { key: 'pmSweep',  label: '下午掃地' }
+      ];
+
+      let html = `
+        <thead>
+          <tr class="bg-cream-50 text-slate-600 font-bold text-xs">
+            <th class="border border-cream-200 py-2 px-2 w-20">項目</th>
+            ${DAYS.map(d => `<th class="border border-cream-200 py-2 px-2">週${d}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      rows.forEach(r => {
+        html += `<tr><th class="border border-cream-200 bg-cream-50/70 text-slate-700 font-bold text-xs py-2 px-2">${r.label}</th>`;
+        for (let d = 0; d < 5; d++) {
+          const curId = state.rehab[r.key][d] || '';
+          const curT = getTherapist(curId);
+          const opts = `<option value="">—</option>` + state.therapists.map(t =>
+            `<option value="${t.id}" ${curId === t.id ? 'selected' : ''}>${escapeHtml(t.short)} (${escapeHtml(t.name)})</option>`
+          ).join('');
+
+          html += `
+            <td class="border border-cream-200 p-1.5 text-center bg-white">
+              <select onchange="updateRehabCell('${r.key}', ${d}, this.value)"
+                style="${curT ? `background-color:${curT.bg}; color:${curT.color}; border-color:${curT.border};` : ''}"
+                class="w-full text-center text-xs sm:text-sm font-bold py-1.5 px-1 rounded-lg border border-cream-200 focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
+                ${opts}
+              </select>
+            </td>
+          `;
+        }
+        html += `</tr>`;
+      });
+
+      html += `</tbody>`;
+      table.innerHTML = html;
+    }
+
+    function updateRehabCell(rowKey, dayIdx, therapistId) {
+      state.rehab[rowKey][dayIdx] = therapistId;
+      saveState();
+      renderAll();
+    }
+
+    // =========================================================================
+    // 7. TAB 3 渲染與互動：活動輪替設定與各病房公告預覽
+    // =========================================================================
+    function renderActivitySequenceEditor() {
+      const container = document.getElementById('activitySequenceEditor');
+      container.innerHTML = state.activities.map((act, idx) => `
+        <div class="flex items-center gap-1.5">
+          <div class="flex items-center bg-cream-50 border border-cream-300 rounded-xl px-2 py-1">
+            <span class="text-[11px] font-bold text-morandi-teal mr-1.5">${idx + 1}.</span>
+            <input type="text" value="${escapeHtml(act)}" onchange="updateActivityName(${idx}, this.value)"
+              class="w-20 text-sm font-semibold text-slate-800 bg-transparent focus:outline-none" />
+          </div>
+          ${idx < state.activities.length - 1 ? '<span class="text-slate-400 font-bold">→</span>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function updateActivityName(idx, val) {
+      const trimmed = val.trim();
+      if (!trimmed) return;
+      state.activities[idx] = trimmed;
+      saveState();
+      renderAll();
+    }
+
+    function renderTherapistRotationTable() {
+      const table = document.getElementById('therapistRotationTable');
+      const periods = getPeriods();
+
+      let html = `
+        <thead>
+          <tr class="bg-cream-50 text-slate-600 text-xs font-bold">
+            <th class="border border-cream-200 py-2 px-3 text-left">治療師</th>
+            <th class="border border-cream-200 py-2 px-3">${periods.cols[0]}（起始設定）</th>
+            <th class="border border-cream-200 py-2 px-3">${periods.cols[1]}（自動推算）</th>
+            <th class="border border-cream-200 py-2 px-3">${periods.cols[2]}（自動推算）</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      state.therapists.forEach((t, tIdx) => {
+        const rot = getTherapistRotation(t);
+        const options = state.activities.map((act, aIdx) =>
+          `<option value="${aIdx}" ${(t.startActivityIndex || 0) === aIdx ? 'selected' : ''}>${escapeHtml(act)}</option>`
+        ).join('');
+
+        html += `
+          <tr class="hover:bg-cream-50/50">
+            <td class="border border-cream-200 py-2 px-3 font-bold text-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full text-xs text-white flex items-center justify-center" style="background-color:${t.color}">${escapeHtml(t.short)}</span>
+                <span>${escapeHtml(t.name)}</span>
+              </div>
+            </td>
+            <td class="border border-cream-200 py-2 px-3 text-center">
+              <select onchange="updateTherapistStartAct(${tIdx}, this.value)"
+                class="px-3 py-1 rounded-lg bg-white border border-cream-300 text-sm font-bold text-morandi-tealDark focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
+                ${options}
+              </select>
+            </td>
+            <td class="border border-cream-200 py-2 px-3 text-center font-semibold text-slate-700">${escapeHtml(rot[1])}</td>
+            <td class="border border-cream-200 py-2 px-3 text-center font-semibold text-slate-700">${escapeHtml(rot[2])}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody>`;
+      table.innerHTML = html;
+    }
+
+    function updateTherapistStartAct(tIdx, actIdx) {
+      state.therapists[tIdx].startActivityIndex = parseInt(actIdx, 10) || 0;
+      saveState();
+      renderAll();
+    }
+
+    /**
+     * 產生單一病房公告格子的 HTML（供網頁預覽與 Word 匯出共用結構）
+     */
+    function buildAnnouncementCellInnerHTML(cell, periods, forWord = false) {
+      const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
+      const hasWR = cell.tags.includes('WR');
+      const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
+
+      if (therapists.length === 0 && cell.tags.length === 0 && !cell.customNote) {
+        return '&nbsp;';
+      }
+
+      // 若無治療師，僅顯示標籤與備註（如 WR、衛教時間）
+      if (therapists.length === 0) {
+        const parts = [...cell.tags];
+        if (cell.customNote) parts.push(cell.customNote);
+        return `<div style="font-weight:bold; font-size:${forWord ? '13pt' : '14px'};">${escapeHtml(parts.join(' / '))}</div>`;
+      }
+
+      // 若有固定特殊活動（如 烹飪、購物、外出、衛教時間）
+      if (nonRotTags.length > 0) {
+        const names = therapists.map(t => escapeHtml(t.name)).join('、');
+        const tagLine = nonRotTags.join('、') + (hasWR ? ' / WR' : '');
+        const noteLine = cell.customNote ? `<div style="font-size:${forWord ? '10pt' : '11px'}; color:#4B5563;">${escapeHtml(cell.customNote)}</div>` : '';
+        return `
+          <div style="font-weight:bold; font-size:${forWord ? '12pt' : '13px'}; margin-bottom:2px;">${names}</div>
+          <div style="font-weight:bold; font-size:${forWord ? '12pt' : '13px'}; color:${forWord ? '#000' : '#B45309'};">${escapeHtml(tagLine)}</div>
+          ${noteLine}
+        `;
+      }
+
+      // 一般治療師排班 -> 顯示全名 + 三期輪替小表
+      const blocks = therapists.map(t => {
+        const rot = getTherapistRotation(t);
+        if (forWord) {
+          return `
+            <div style="font-weight:bold; font-size:12pt; margin-bottom:3px;">${escapeHtml(t.name)}${hasWR ? ' (WR)' : ''}</div>
+            <table style="width:100%; border-collapse:collapse; margin-top:2px; font-size:9.5pt;">
+              <tr>
+                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6;">${periods.cols[0]}</td>
+                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6;">${periods.cols[1]}</td>
+                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6;">${periods.cols[2]}</td>
+              </tr>
+              <tr>
+                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold;">${escapeHtml(rot[0])}</td>
+                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold;">${escapeHtml(rot[1])}</td>
+                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold;">${escapeHtml(rot[2])}</td>
+              </tr>
+            </table>
+          `;
+        } else {
+          return `
+            <div class="font-bold text-slate-800 text-sm">${escapeHtml(t.name)}${hasWR ? ' <span class="text-xs text-sky-700">(WR)</span>' : ''}</div>
+            <table class="mini-rot-table">
+              <thead>
+                <tr class="bg-cream-100 text-slate-600">
+                  <th>${periods.cols[0]}</th><th>${periods.cols[1]}</th><th>${periods.cols[2]}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="font-bold text-slate-800 bg-white">
+                  <td>${escapeHtml(rot[0])}</td><td>${escapeHtml(rot[1])}</td><td>${escapeHtml(rot[2])}</td>
+                </tr>
+              </tbody>
+            </table>
+          `;
+        }
+      }).join('<div style="height:4px;"></div>');
+
+      const noteLine = cell.customNote
+        ? `<div style="font-size:${forWord ? '9.5pt' : '11px'}; margin-top:2px; color:#4B5563;">${escapeHtml(cell.customNote)}</div>`
+        : '';
+
+      return blocks + noteLine;
+    }
+
+    function renderAnnouncementsPreview() {
+      const container = document.getElementById('announcementsContainer');
+      const periods = getPeriods();
+
+      container.innerHTML = state.wards.map(w => {
+        const ot = getTherapist(w.otId);
+        const wardNum = w.name.replace('W', '');
+
+        const buildRow = (period, label) => {
+          const tds = DAYS.map((_, dIdx) => `
+            <td class="p-2 align-middle bg-white w-[18%]">
+              ${buildAnnouncementCellInnerHTML(w.schedule[period][dIdx], periods, false)}
+            </td>
+          `).join('');
+          return `<tr><th class="bg-cream-100 text-slate-800 font-bold text-sm p-2 w-[10%]">${label}</th>${tds}</tr>`;
+        };
+
+        return `
+          <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-5 overflow-x-auto">
+            <div class="min-w-[720px]">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b-2 border-slate-800">
+                <div class="flex items-baseline gap-3">
+                  <h3 class="text-lg font-extrabold text-slate-900 tracking-wide">
+                    ${state.year}年${periods.label} ${escapeHtml(wardNum)}病房活動時間表
+                  </h3>
+                  <div class="text-sm font-bold text-slate-700">
+                    負責OT：${ot ? escapeHtml(ot.name) : '未指派'}
+                    ${w.wrTime ? `<span class="ml-2 text-xs font-medium text-slate-500">(${escapeHtml(w.wrTime)})</span>` : ''}
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="printSingleWard('${w.id}')"
+                    class="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-800 border border-cream-300 transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-morandi-teal" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    <span>單獨列印此病房</span>
+                  </button>
+                  <button onclick="exportSingleWardWord('${w.id}')"
+                    class="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-morandi-tealLight hover:bg-morandi-teal hover:text-white text-morandi-tealDark border border-morandi-teal/30 transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>下載此病房 Word</span>
+                  </button>
+                </div>
+              </div>
+              <table class="announce-table">
+                <thead>
+                  <tr class="bg-cream-100 text-slate-800 text-sm font-bold">
+                    <th class="py-2 px-2">時間</th>
+                    ${DAYS_FULL.map(d => `<th class="py-2 px-2">${d}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${buildRow('am', '上午活動')}
+                  ${buildRow('pm', '下午活動')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 10. 輸出與列印設定彈窗 (Selective Print / Word / Excel)
+    // =========================================================================
+    function formatCellShortText(cell) {
+      const names = cell.therapistIds.map(id => {
+        const t = getTherapist(id);
+        return t ? t.short : '';
+      }).filter(Boolean);
+      const parts = [...names, ...cell.tags];
+      if (cell.customNote) parts.push(cell.customNote);
+      return parts.join('/');
+    }
+
+    /**
+     * 開啟「一鍵輸出 / 選擇病房列印」彈窗
+     */
+    function openExportModal() {
+      const wardCheckboxes = state.wards.map(w => {
+        const ot = getTherapist(w.otId);
+        return `
+          <label class="flex items-center justify-between p-2.5 rounded-xl border border-cream-200 bg-white hover:bg-morandi-tealLight/40 cursor-pointer transition">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" name="exportWard" value="${w.id}" checked onchange="updateExportCount()"
+                class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
+              <span class="px-2 py-0.5 rounded-md bg-morandi-tealLight text-morandi-tealDark text-xs font-extrabold">${escapeHtml(w.name)}</span>
+              <span class="text-sm font-semibold text-slate-800">${escapeHtml(w.name.replace('W', ''))}病房活動時間表</span>
+            </div>
+            <span class="text-xs text-slate-500">負責OT：${ot ? escapeHtml(ot.name) : '未指派'}</span>
+          </label>
+        `;
+      }).join('');
+
+      const bodyHtml = `
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-cream-200">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" onclick="selectExportPreset('all')"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-cream-100 hover:bg-cream-200 text-slate-700 border border-cream-300 transition">全選</button>
+            <button type="button" onclick="selectExportPreset('wardsOnly')"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-morandi-tealLight hover:bg-morandi-teal/20 text-morandi-tealDark border border-morandi-teal/30 transition">僅選全部病房公告表</button>
+            <button type="button" onclick="selectExportPreset('none')"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white hover:bg-cream-100 text-slate-500 border border-cream-300 transition">全不選</button>
+          </div>
+          <span id="exportSelectedCount" class="text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-teal text-white">已勾選 ${state.wards.length} 項</span>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">總表與個人課表</p>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-cream-200 bg-cream-50/60 hover:bg-cream-100/70 cursor-pointer transition">
+            <input id="exportWardSummary" type="checkbox" onchange="updateExportCount()"
+              class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
+            <div>
+              <div class="text-sm font-semibold text-slate-800">各病房活動總覽表（8W~12W 橫向總表）</div>
+              <div class="text-[11px] text-slate-500">彙整所有病房週一至週五上下午排程與 WR 時間</div>
+            </div>
+          </label>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-cream-200 bg-cream-50/60 hover:bg-cream-100/70 cursor-pointer transition">
+            <input id="exportPersonalSummary" type="checkbox" onchange="updateExportCount()"
+              class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
+            <div>
+              <div class="text-sm font-semibold text-slate-800">個人活動時間表（含評估 / ICF / 復工表）</div>
+              <div class="text-[11px] text-slate-500">包含每位治療師個人課表、評估 ICF 與復健工作總表</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">各病房獨立公告表（每病房自動獨立分頁）</p>
+          <div class="space-y-1.5">
+            ${wardCheckboxes}
+          </div>
+        </div>
+      `;
+
+      const footerHtml = `
+        <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+          <button onclick="executeSelectedPrint()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-slate-800 hover:bg-slate-900 text-white shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>直接列印 (A4 橫式)</span>
+          </button>
+          <button onclick="executeSelectedWord()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>匯出 Word (.doc)</span>
+          </button>
+          <button onclick="executeSelectedExcel()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>匯出 Excel (.xlsx)</span>
+          </button>
+        </div>
+      `;
+
+      openModal('輸出與列印設定（自由選擇病房）', bodyHtml, footerHtml);
+      updateExportCount();
+    }
+
+    function selectExportPreset(preset) {
+      const wardSummaryEl = document.getElementById('exportWardSummary');
+      const personalSummaryEl = document.getElementById('exportPersonalSummary');
+      const wardEls = document.querySelectorAll('input[name="exportWard"]');
+
+      if (preset === 'all') {
+        wardSummaryEl.checked = true;
+        personalSummaryEl.checked = true;
+        wardEls.forEach(el => el.checked = true);
+      } else if (preset === 'wardsOnly') {
+        wardSummaryEl.checked = false;
+        personalSummaryEl.checked = false;
+        wardEls.forEach(el => el.checked = true);
+      } else if (preset === 'none') {
+        wardSummaryEl.checked = false;
+        personalSummaryEl.checked = false;
+        wardEls.forEach(el => el.checked = false);
+      }
+      updateExportCount();
+    }
+
+    function getExportSelection() {
+      const includeWardSummary = document.getElementById('exportWardSummary')?.checked || false;
+      const includePersonalSummary = document.getElementById('exportPersonalSummary')?.checked || false;
+      const wardIds = Array.from(document.querySelectorAll('input[name="exportWard"]:checked')).map(el => el.value);
+      const totalCount = (includeWardSummary ? 1 : 0) + (includePersonalSummary ? 1 : 0) + wardIds.length;
+      return { includeWardSummary, includePersonalSummary, wardIds, totalCount };
+    }
+
+    function updateExportCount() {
+      const badge = document.getElementById('exportSelectedCount');
+      if (!badge) return;
+      const { totalCount } = getExportSelection();
+      badge.textContent = `已勾選 ${totalCount} 項`;
+      badge.className = totalCount > 0
+        ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-teal text-white'
+        : 'text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-red text-white';
+    }
+
+    function buildExportFilename(selection, ext) {
+      const halfText = state.half === 'H1' ? '上半年' : '下半年';
+      const scopeParts = [];
+
+      if (selection.includeWardSummary || selection.includePersonalSummary) {
+        if (selection.includeWardSummary && selection.includePersonalSummary) scopeParts.push('總表與個人表');
+        else if (selection.includeWardSummary) scopeParts.push('病房總表');
+        else scopeParts.push('個人課表');
+      }
+
+      if (selection.wardIds.length === state.wards.length && state.wards.length > 0) {
+        if (scopeParts.length === 0) scopeParts.push('全病房');
+        else scopeParts.push('全病房公告');
+      } else if (selection.wardIds.length > 0) {
+        scopeParts.push(selection.wardIds.join('_'));
+      }
+
+      const scopeStr = scopeParts.length > 0 ? scopeParts.join('_') : '病房';
+      return `${state.year}年${halfText}_${scopeStr}活動時間表.${ext}`;
+    }
+
+    // =========================================================================
+    // 11. 模組化 HTML 建構器（供直接列印與 Word 匯出共用）
+    // =========================================================================
+    function buildWardSummaryBlockHtml(tableClass = 'summary-table') {
+      const periods = getPeriods();
+      const tablesHtml = state.wards.map(w => {
+        const ot = getTherapist(w.otId);
+        return `
+          <table class="${tableClass}" style="margin-bottom:8px;">
+            <tr>
+              <th style="width:12%; background:#E8F1F1;">${escapeHtml(w.name)}</th>
+              <th style="width:14%; background:#F3F4F6;">一</th>
+              <th style="width:14%; background:#F3F4F6;">二</th>
+              <th style="width:14%; background:#F3F4F6;">三</th>
+              <th style="width:14%; background:#F3F4F6;">四</th>
+              <th style="width:14%; background:#F3F4F6;">五</th>
+              <th style="width:18%; background:#F9FAFB;">負責OT / WR</th>
+            </tr>
+            <tr>
+              <td style="font-weight:bold; background:#F9FAFB;">上午</td>
+              ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.am[d])) || '&nbsp;'}</td>`).join('')}
+              <td rowspan="2" style="font-size:9.5pt;"><b>${ot ? escapeHtml(ot.name) : ''}</b><br/>${escapeHtml(w.wrTime || '')}</td>
+            </tr>
+            <tr>
+              <td style="font-weight:bold; background:#F9FAFB;">下午</td>
+              ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.pm[d])) || '&nbsp;'}</td>`).join('')}
+            </tr>
+          </table>
+        `;
+      }).join('');
+
+      return `
+        <h2 style="font-size:14pt; font-weight:bold; text-align:center; margin:0 0 8px 0;">
+          ${state.year}年${periods.label} 精神科病房職能治療活動時間總表
+        </h2>
+        ${tablesHtml}
+      `;
+    }
+
+    function buildPersonalSummaryBlockHtml(tableClass = 'summary-table') {
+      const periods = getPeriods();
+      const personalHtml = state.therapists.map(t => `
+        <table class="${tableClass}" style="margin-bottom:6px;">
+          <tr>
+            <th style="width:14%; background:#E8F1F1;">${escapeHtml(t.name)} (${escapeHtml(t.short)})</th>
+            <th style="width:17.2%; background:#F3F4F6;">一</th>
+            <th style="width:17.2%; background:#F3F4F6;">二</th>
+            <th style="width:17.2%; background:#F3F4F6;">三</th>
+            <th style="width:17.2%; background:#F3F4F6;">四</th>
+            <th style="width:17.2%; background:#F3F4F6;">五</th>
+          </tr>
+          <tr>
+            <td style="background:#FAFAFA; font-size:9pt;">早務</td>
+            ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="font-weight:bold;">上午</td>
+            ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'am', d).join('/')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="font-weight:bold;">下午</td>
+            ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'pm', d).join('/')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="background:#FAFAFA; font-size:9pt;">晚務</td>
+            ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+        </table>
+      `).join('');
+
+      const evalRowsHtml = [
+        ['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']
+      ].map(([label, key]) => `
+        <tr>
+          <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
+          ${DAYS.map((_, d) => {
+            const txt = (state.evalIcf[key][d] || []).map(it => {
+              const t = getTherapist(it.therapistId);
+              return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
+            }).join(' / ');
+            return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+
+      const rehabRowsHtml = [
+        ['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']
+      ].map(([label, key]) => `
+        <tr>
+          <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
+          ${DAYS.map((_, d) => {
+            const t = getTherapist(state.rehab[key][d]);
+            return `<td>${t ? escapeHtml(t.short) : '&nbsp;'}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+
+      return `
+        <h2 style="font-size:14pt; font-weight:bold; text-align:center; margin:0 0 8px 0;">
+          ${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作總表
+        </h2>
+        ${personalHtml}
+        <h3 style="font-size:11pt; font-weight:bold; margin:8px 0 4px 0;">評估與 ICF 總表</h3>
+        <table class="${tableClass}" style="margin-bottom:6px;">
+          <tr>
+            <th style="width:14%; background:#F3F4F6;">類別</th>
+            <th style="width:17.2%; background:#F3F4F6;">一</th>
+            <th style="width:17.2%; background:#F3F4F6;">二</th>
+            <th style="width:17.2%; background:#F3F4F6;">三</th>
+            <th style="width:17.2%; background:#F3F4F6;">四</th>
+            <th style="width:17.2%; background:#F3F4F6;">五</th>
+          </tr>
+          ${evalRowsHtml}
+        </table>
+        <h3 style="font-size:11pt; font-weight:bold; margin:8px 0 4px 0;">復健工作（復工）總表</h3>
+        <table class="${tableClass}" style="margin-bottom:6px;">
+          <tr>
+            <th style="width:14%; background:#F3F4F6;">項目</th>
+            <th style="width:17.2%; background:#F3F4F6;">一</th>
+            <th style="width:17.2%; background:#F3F4F6;">二</th>
+            <th style="width:17.2%; background:#F3F4F6;">三</th>
+            <th style="width:17.2%; background:#F3F4F6;">四</th>
+            <th style="width:17.2%; background:#F3F4F6;">五</th>
+          </tr>
+          ${rehabRowsHtml}
+        </table>
+        <p style="font-size:9.5pt; margin-top:6px;">
+          <b>活動輪替順序：</b>${escapeHtml(state.activities.join(' → '))}　｜　
+          <b>紀錄二次順序：</b>${escapeHtml(state.recordOrder)}（本期：${escapeHtml(state.recordCurrent)}）　｜　
+          ${escapeHtml(state.footerNote)}
+        </p>
+      `;
+    }
+
+    function buildSingleWardAnnouncementHtml(w, tableClass = 'announce-word-table') {
+      const periods = getPeriods();
+      const ot = getTherapist(w.otId);
+      const wardNum = w.name.replace('W', '');
+
+      return `
+        <div style="text-align:center; margin-bottom:12px;">
+          <span style="font-size:20pt; font-weight:bold; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
+            ${state.year}年${periods.label} ${escapeHtml(wardNum)}病房活動時間表
+          </span>
+          <span style="font-size:14pt; font-weight:bold; margin-left:24px; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
+            負責OT：${ot ? escapeHtml(ot.name) : ''}
+          </span>
+        </div>
+        <table class="${tableClass}">
+          <tr>
+            <th style="width:10%; background:#F3F4F6;">時間</th>
+            <th style="width:18%; background:#F3F4F6;">星期一</th>
+            <th style="width:18%; background:#F3F4F6;">星期二</th>
+            <th style="width:18%; background:#F3F4F6;">星期三</th>
+            <th style="width:18%; background:#F3F4F6;">星期四</th>
+            <th style="width:18%; background:#F3F4F6;">星期五</th>
+          </tr>
+          <tr>
+            <td style="font-weight:bold; font-size:14pt; background:#F9FAFB; height:175px;">上午<br/>活動</td>
+            ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.am[d], periods, true)}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="font-weight:bold; font-size:14pt; background:#F9FAFB; height:175px;">下午<br/>活動</td>
+            ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.pm[d], periods, true)}</td>`).join('')}
+          </tr>
+        </table>
+      `;
+    }
+
+    // =========================================================================
+    // 12. 執行輸出：直接列印 / Word (.doc) / Excel (.xlsx) / 單一病房快捷
+    // =========================================================================
+    function runPrintWithSelection(selection) {
+      if (selection.totalCount === 0) {
+        showToast('請至少勾選一項要列印的內容', 'error');
+        return;
+      }
+
+      const pages = [];
+      if (selection.includeWardSummary) {
+        pages.push(`<div class="print-page">${buildWardSummaryBlockHtml('print-summary-table')}</div>`);
+      }
+      if (selection.includePersonalSummary) {
+        pages.push(`<div class="print-page">${buildPersonalSummaryBlockHtml('print-summary-table')}</div>`);
+      }
+      selection.wardIds.forEach(wId => {
+        const w = state.wards.find(item => item.id === wId);
+        if (w) {
+          pages.push(`<div class="print-page">${buildSingleWardAnnouncementHtml(w, 'print-announce-table')}</div>`);
+        }
+      });
+
+      const printEl = document.getElementById('printContainer');
+      printEl.innerHTML = pages.join('');
+      closeModal();
+      setTimeout(() => {
+        window.print();
+      }, 120);
+    }
+
+    function executeSelectedPrint() {
+      runPrintWithSelection(getExportSelection());
+    }
+
+    function printSingleWard(wardId) {
+      runPrintWithSelection({
+        includeWardSummary: false,
+        includePersonalSummary: false,
+        wardIds: [wardId],
+        totalCount: 1
+      });
+    }
+
+    function runWordExportWithSelection(selection) {
+      if (selection.totalCount === 0) {
+        showToast('請至少勾選一項要匯出的內容', 'error');
+        return;
+      }
+
+      try {
+        const periods = getPeriods();
+        const sections = [];
+
+        if (selection.includeWardSummary) {
+          sections.push(buildWardSummaryBlockHtml('summary-table'));
+        }
+        if (selection.includePersonalSummary) {
+          sections.push(buildPersonalSummaryBlockHtml('summary-table'));
+        }
+        selection.wardIds.forEach(wId => {
+          const w = state.wards.find(item => item.id === wId);
+          if (w) {
+            sections.push(buildSingleWardAnnouncementHtml(w, 'announce-word-table'));
+          }
+        });
+
+        const joinedBody = sections.join('<br clear="all" style="page-break-before:always;" />');
+
+        const docHtml = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:w="urn:schemas-microsoft-com:office:word"
+                xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8" />
+            <title>${state.year}年${periods.label}病房活動時間表</title>
+            <style>
+              @page Section1 {
+                size: 29.7cm 21.0cm;
+                mso-page-orientation: landscape;
+                margin: 1.2cm 1.2cm 1.2cm 1.2cm;
+              }
+              div.Section1 { page: Section1; }
+              body {
+                font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+                color: #000000;
+              }
+              table.summary-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10pt;
+              }
+              table.summary-table th, table.summary-table td {
+                border: 1px solid #000000;
+                padding: 3px 4px;
+                text-align: center;
+                vertical-align: middle;
+              }
+              table.announce-word-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-family: "標楷體", "DFKai-SB", "Microsoft JhengHei", sans-serif;
+                font-size: 12pt;
+              }
+              table.announce-word-table th, table.announce-word-table td {
+                border: 1.5px solid #000000;
+                text-align: center;
+                vertical-align: middle;
+              }
+              table.announce-word-table th {
+                padding: 8px 4px;
+                font-size: 13.5pt;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="Section1">
+              ${joinedBody}
+            </div>
+          </body>
+          </html>
+        `;
+
+        const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const filename = buildExportFilename(selection, 'doc');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        closeModal();
+        showToast(`已成功匯出 Word：${filename}`, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('匯出 Word 時發生錯誤', 'error');
+      }
+    }
+
+    function executeSelectedWord() {
+      runWordExportWithSelection(getExportSelection());
+    }
+
+    function exportSingleWardWord(wardId) {
+      runWordExportWithSelection({
+        includeWardSummary: false,
+        includePersonalSummary: false,
+        wardIds: [wardId],
+        totalCount: 1
+      });
+    }
+
+    function executeSelectedExcel() {
+      const selection = getExportSelection();
+      if (selection.totalCount === 0) {
+        showToast('請至少勾選一項要匯出的內容', 'error');
+        return;
+      }
+      if (typeof XLSX === 'undefined') {
+        showToast('Excel 元件尚未載入完成，請稍候再試', 'error');
+        return;
+      }
+
+      try {
+        const periods = getPeriods();
+        const wb = XLSX.utils.book_new();
+
+        // 1. 各病房活動總覽表
+        if (selection.includeWardSummary) {
+          const sheet1Data = [
+            [`${state.year}年${periods.label} 精神科病房活動時間總表`],
+            []
+          ];
+          state.wards.forEach(w => {
+            const ot = getTherapist(w.otId);
+            sheet1Data.push([`${w.name}`, '一', '二', '三', '四', '五', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
+            sheet1Data.push(['上午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.am[d]))]);
+            sheet1Data.push(['下午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.pm[d]))]);
+            sheet1Data.push([]);
+          });
+          const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+          ws1['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 15 }];
+          XLSX.utils.book_append_sheet(wb, ws1, '各病房活動總覽');
+        }
+
+        // 2. 個人活動時間表
+        if (selection.includePersonalSummary) {
+          const sheet2Data = [
+            [`${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作`],
+            []
+          ];
+          state.therapists.forEach(t => {
+            sheet2Data.push([`${t.name} (${t.short})`, '一', '二', '三', '四', '五']);
+            sheet2Data.push(['早務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' '))]);
+            sheet2Data.push(['上午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'am', d).join('/'))]);
+            sheet2Data.push(['下午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'pm', d).join('/'))]);
+            sheet2Data.push(['晚務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' '))]);
+            sheet2Data.push([]);
+          });
+
+          sheet2Data.push(['評估與ICF總表', '一', '二', '三', '四', '五']);
+          [['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']].forEach(([label, key]) => {
+            sheet2Data.push([
+              label,
+              ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
+                const t = getTherapist(it.therapistId);
+                return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
+              }).join(' / '))
+            ]);
+          });
+          sheet2Data.push([]);
+
+          sheet2Data.push(['復健工作總表', '一', '二', '三', '四', '五']);
+          [['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']].forEach(([label, key]) => {
+            sheet2Data.push([
+              label,
+              ...DAYS.map((_, d) => {
+                const t = getTherapist(state.rehab[key][d]);
+                return t ? t.short : '';
+              })
+            ]);
+          });
+          sheet2Data.push([]);
+          sheet2Data.push(['活動輪替順序', state.activities.join(' → ')]);
+          sheet2Data.push(['紀錄二次順序', state.recordOrder || '']);
+          sheet2Data.push(['本期二次紀錄', state.recordCurrent || '']);
+          sheet2Data.push(['備註', state.footerNote || '']);
+
+          const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+          ws2['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+          XLSX.utils.book_append_sheet(wb, ws2, '個人活動時間表');
+        }
+
+        // 3. 各勾選病房的獨立工作表（含三期輪替）
+        const formatAnnouncementPlain = (cell) => {
+          const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
+          const hasWR = cell.tags.includes('WR');
+          const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
+
+          if (therapists.length === 0) {
+            return [...cell.tags, cell.customNote].filter(Boolean).join(' / ');
+          }
+          if (nonRotTags.length > 0) {
+            const names = therapists.map(t => t.name).join('、');
+            return `${names}\n${nonRotTags.join('、')}${hasWR ? '/WR' : ''}${cell.customNote ? '\n' + cell.customNote : ''}`;
+          }
+          return therapists.map(t => {
+            const rot = getTherapistRotation(t);
+            return `${t.name}${hasWR ? '(WR)' : ''}\n${periods.cols[0]}:${rot[0]} | ${periods.cols[1]}:${rot[1]} | ${periods.cols[2]}:${rot[2]}`;
+          }).join('\n') + (cell.customNote ? `\n${cell.customNote}` : '');
+        };
+
+        selection.wardIds.forEach(wId => {
+          const w = state.wards.find(item => item.id === wId);
+          if (!w) return;
+          const ot = getTherapist(w.otId);
+          const wardNum = w.name.replace('W', '');
+          const wardData = [
+            [`${state.year}年${periods.label} ${wardNum}病房活動時間表`, '', '', '', `負責OT：${ot ? ot.name : ''}`, w.wrTime || ''],
+            ['時間', '星期一', '星期二', '星期三', '星期四', '星期五'],
+            ['上午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.am[d]))],
+            ['下午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.pm[d]))]
+          ];
+          const wsWard = XLSX.utils.aoa_to_sheet(wardData);
+          wsWard['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }];
+          XLSX.utils.book_append_sheet(wb, wsWard, `${w.name}公告表`);
+        });
+
+        const filename = buildExportFilename(selection, 'xlsx');
+        XLSX.writeFile(wb, filename);
+        closeModal();
+        showToast(`已成功匯出 Excel：${filename}`, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('匯出 Excel 時發生錯誤', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 13. 共用 Modal 與 Toast 系統（不使用 alert/confirm）
+    // =========================================================================
+    function renderTherapistSettings() {
+      const container = document.getElementById('therapistSettingsList');
+
+      container.innerHTML = state.therapists.map((t, idx) => {
+        const swatches = MORANDI_PALETTE.map((p, pIdx) => `
+          <button type="button" onclick="updateTherapistColor(${idx}, ${pIdx})"
+            style="background-color:${p.color};"
+            class="w-6 h-6 rounded-full transition transform hover:scale-110 ${t.color === p.color ? 'ring-2 ring-offset-2 ring-slate-800' : ''}"
+            title="切換代表色"></button>
+        `).join('');
+
+        return `
+          <div class="rounded-2xl border border-cream-200 p-4 bg-cream-50/50 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-full text-sm font-bold text-white flex items-center justify-center shadow-sm" style="background-color:${t.color}">${escapeHtml(t.short)}</span>
+                <span class="font-bold text-slate-800">${escapeHtml(t.name)}</span>
+              </div>
+              <button onclick="confirmDeleteTherapist(${idx})" class="text-xs text-morandi-red hover:underline font-medium">刪除</button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">簡稱 (1字)</label>
+                <input type="text" maxlength="2" value="${escapeHtml(t.short)}" onchange="updateTherapistField(${idx}, 'short', this.value)"
+                  class="w-full px-2.5 py-1.5 text-sm font-bold text-center bg-white border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+              </div>
+              <div class="col-span-2">
+                <label class="block text-[11px] font-semibold text-slate-500 mb-1">完整姓名</label>
+                <input type="text" value="${escapeHtml(t.name)}" onchange="updateTherapistField(${idx}, 'name', this.value)"
+                  class="w-full px-2.5 py-1.5 text-sm font-semibold bg-white border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">代表色</label>
+              <div class="flex flex-wrap gap-1.5">${swatches}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateTherapistField(idx, field, val) {
+      const trimmed = val.trim();
+      if (!trimmed) return;
+      state.therapists[idx][field] = trimmed;
+      saveState();
+      renderAll();
+      showToast('已更新治療師資料', 'success');
+    }
+
+    function updateTherapistColor(idx, paletteIdx) {
+      const p = MORANDI_PALETTE[paletteIdx];
+      state.therapists[idx].color = p.color;
+      state.therapists[idx].bg = p.bg;
+      state.therapists[idx].border = p.border;
+      saveState();
+      renderAll();
+    }
+
+    function addNewTherapist() {
+      const p = MORANDI_PALETTE[state.therapists.length % MORANDI_PALETTE.length];
+      const newId = 't_' + Date.now();
+      state.therapists.push({
+        id: newId,
+        short: '新',
+        name: '新治療師',
+        ...p,
+        startActivityIndex: state.therapists.length % state.activities.length
+      });
+      ensurePersonalExtraKeys();
+      saveState();
+      renderAll();
+      showToast('已新增治療師，請修改姓名與簡稱', 'success');
+    }
+
+    function confirmDeleteTherapist(idx) {
+      if (state.therapists.length <= 1) {
+        showToast('至少需保留一位治療師', 'error');
+        return;
+      }
+      const t = state.therapists[idx];
+      openConfirmModal(
+        '刪除治療師',
+        `確定要刪除「${escapeHtml(t.name)}」嗎？已排入各病房、評估與復工的該員資料將會一併移除。`,
+        () => {
+          const delId = t.id;
+          state.therapists.splice(idx, 1);
+          // 清理關聯資料
+          state.wards.forEach(w => {
+            if (w.otId === delId) w.otId = '';
+            ['am', 'pm'].forEach(p => {
+              for (let d = 0; d < 5; d++) {
+                w.schedule[p][d].therapistIds = w.schedule[p][d].therapistIds.filter(id => id !== delId);
+              }
+            });
+          });
+          ['amEval', 'amIcf', 'pmEval', 'pmIcf'].forEach(k => {
+            for (let d = 0; d < 5; d++) {
+              state.evalIcf[k][d] = state.evalIcf[k][d].filter(it => it.therapistId !== delId);
+            }
+          });
+          ['amGarden', 'amSweep', 'pmGarden', 'pmSweep'].forEach(k => {
+            for (let d = 0; d < 5; d++) {
+              if (state.rehab[k][d] === delId) state.rehab[k][d] = '';
+            }
+          });
+          delete state.personalExtra[delId];
+          if (activeBrush.mode === 'therapist' && activeBrush.value === delId) {
+            activeBrush = { mode: 'edit', value: '' };
+          }
+          saveState();
+          renderAll();
+          showToast(`已刪除 ${t.name}`, 'info');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 9. 頂部動作：載入範本、清空、JSON 專案存取
+    // =========================================================================
+    function confirmLoadTemplate() {
+      openConfirmModal(
+        '載入 113 下半年範本',
+        '這將會以內建的「113 下半年完整範本」覆蓋目前的排程資料（將保留您目前設定的年份與上下半年選項），確定要載入嗎？',
+        () => {
+          state = build113H2Template(state.year, state.half);
+          saveState();
+          renderAll();
+          showToast('已載入 113 下半年範本資料', 'success');
+        }
+      );
+    }
+
+    function confirmClearAll() {
+      openConfirmModal(
+        '清空所有排程',
+        '確定要清空各病房排班、評估/ICF、復健工作與個人額外業務嗎？（治療師名單與活動輪替名稱將會保留）',
+        () => {
+          state.wards.forEach(w => {
+            w.schedule = createEmptyWardSchedule();
+          });
+          state.evalIcf = {
+            amEval: [[], [], [], [], []],
+            amIcf: [[], [], [], [], []],
+            pmEval: [[], [], [], [], []],
+            pmIcf: [[], [], [], [], []]
+          };
+          state.rehab = {
+            amGarden: ['', '', '', '', ''],
+            amSweep: ['', '', '', '', ''],
+            pmGarden: ['', '', '', '', ''],
+            pmSweep: ['', '', '', '', '']
+          };
+          state.therapists.forEach(t => {
+            state.personalExtra[t.id] = { am: [[], [], [], [], []], pm: [[], [], [], [], []] };
+          });
+          saveState();
+          renderAll();
+          showToast('已清空所有排程資料', 'info');
+        }
+      );
+    }
+
+    function exportJSON() {
+      const periods = getPeriods();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${state.year}年${periods.label}_病房活動排程專案.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('已下載專案備份檔 (.json)', 'success');
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.therapists || !parsed.wards) {
+            throw new Error('格式不符');
+          }
+          state = parsed;
+          ensurePersonalExtraKeys();
+          saveState();
+          renderAll();
+          showToast('成功匯入專案資料！', 'success');
+        } catch (err) {
+          showToast('匯入失敗：請確認檔案為正確的排程 JSON 檔', 'error');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // 10. 匯出 Excel (.xlsx) — 3 個完整工作表
+    // =========================================================================
+    function formatCellShortText(cell) {
+      const names = cell.therapistIds.map(id => {
+        const t = getTherapist(id);
+        return t ? t.short : '';
+      }).filter(Boolean);
+      const parts = [...names, ...cell.tags];
+      if (cell.customNote) parts.push(cell.customNote);
+      return parts.join('/');
+    }
+
+    function exportExcel() {
+      if (typeof XLSX === 'undefined') {
+        showToast('Excel 元件尚未載入完成，請稍候再試', 'error');
+        return;
+      }
+
+      try {
+        const periods = getPeriods();
+        const wb = XLSX.utils.book_new();
+
+        // ---------- Sheet 1: 各病房活動時間 ----------
+        const sheet1Data = [
+          [`${state.year}年${periods.label} 精神科病房活動時間總表`],
+          []
+        ];
+
+        state.wards.forEach(w => {
+          const ot = getTherapist(w.otId);
+          sheet1Data.push([`${w.name}`, '一', '二', '三', '四', '五', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
+          sheet1Data.push(['上午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.am[d]))]);
+          sheet1Data.push(['下午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.pm[d]))]);
+          sheet1Data.push([]);
+        });
+
+        const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+        ws1['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 15 }];
+        XLSX.utils.book_append_sheet(wb, ws1, '各病房活動時間');
+
+        // ---------- Sheet 2: 個人活動時間表 ----------
+        const sheet2Data = [
+          [`${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作`],
+          []
+        ];
+
+        state.therapists.forEach(t => {
+          sheet2Data.push([`${t.name} (${t.short})`, '一', '二', '三', '四', '五']);
+          sheet2Data.push(['早務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' '))]);
+          sheet2Data.push(['上午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'am', d).join('/'))]);
+          sheet2Data.push(['下午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'pm', d).join('/'))]);
+          sheet2Data.push(['晚務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' '))]);
+          sheet2Data.push([]);
+        });
+
+        // 評估與 ICF 總表
+        sheet2Data.push(['評估與ICF總表', '一', '二', '三', '四', '五']);
+        [
+          ['上午評估', 'amEval'],
+          ['上午ICF', 'amIcf'],
+          ['下午評估', 'pmEval'],
+          ['下午ICF', 'pmIcf']
+        ].forEach(([label, key]) => {
+          sheet2Data.push([
+            label,
+            ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
+              const t = getTherapist(it.therapistId);
+              return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
+            }).join(' / '))
+          ]);
+        });
+        sheet2Data.push([]);
+
+        // 復健工作總表
+        sheet2Data.push(['復健工作總表', '一', '二', '三', '四', '五']);
+        [
+          ['上午園藝', 'amGarden'],
+          ['上午掃地', 'amSweep'],
+          ['下午園藝', 'pmGarden'],
+          ['下午掃地', 'pmSweep']
+        ].forEach(([label, key]) => {
+          sheet2Data.push([
+            label,
+            ...DAYS.map((_, d) => {
+              const t = getTherapist(state.rehab[key][d]);
+              return t ? t.short : '';
+            })
+          ]);
+        });
+        sheet2Data.push([]);
+
+        // 活動輪替與備註
+        sheet2Data.push(['活動輪替順序', state.activities.join(' → ')]);
+        sheet2Data.push(['紀錄二次順序', state.recordOrder || '']);
+        sheet2Data.push(['本期二次紀錄', state.recordCurrent || '']);
+        sheet2Data.push(['備註', state.footerNote || '']);
+
+        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+        ws2['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(wb, ws2, '個人活動時間表');
+
+        // ---------- Sheet 3: 各病房公告表(含輪替) ----------
+        const sheet3Data = [
+          [`${state.year}年${periods.label} 各病房活動時間公告表（含三期輪替）`],
+          []
+        ];
+
+        const formatAnnouncementPlain = (cell) => {
+          const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
+          const hasWR = cell.tags.includes('WR');
+          const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
+
+          if (therapists.length === 0) {
+            return [...cell.tags, cell.customNote].filter(Boolean).join(' / ');
+          }
+          if (nonRotTags.length > 0) {
+            const names = therapists.map(t => t.name).join('、');
+            return `${names}\n${nonRotTags.join('、')}${hasWR ? '/WR' : ''}${cell.customNote ? '\n' + cell.customNote : ''}`;
+          }
+          return therapists.map(t => {
+            const rot = getTherapistRotation(t);
+            return `${t.name}${hasWR ? '(WR)' : ''}\n${periods.cols[0]}:${rot[0]} | ${periods.cols[1]}:${rot[1]} | ${periods.cols[2]}:${rot[2]}`;
+          }).join('\n') + (cell.customNote ? `\n${cell.customNote}` : '');
+        };
+
+        state.wards.forEach(w => {
+          const ot = getTherapist(w.otId);
+          const wardNum = w.name.replace('W', '');
+          sheet3Data.push([`${state.year}年${periods.label} ${wardNum}病房活動時間表`, '', '', '', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
+          sheet3Data.push(['時間', '星期一', '星期二', '星期三', '星期四', '星期五']);
+          sheet3Data.push(['上午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.am[d]))]);
+          sheet3Data.push(['下午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.pm[d]))]);
+          sheet3Data.push([]);
+        });
+
+        const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+        ws3['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }];
+        XLSX.utils.book_append_sheet(wb, ws3, '各病房公告表(含輪替)');
+
+        const filename = `${state.year}年${periods.label}_病房活動時間表.xlsx`;
+        XLSX.writeFile(wb, filename);
+        showToast(`已成功匯出 Excel：${filename}`, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('匯出 Excel 時發生錯誤', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 11. 匯出 Word (.doc) — 總表 + 每病房獨立分頁公告表
+    // =========================================================================
+    function exportWord() {
+      try {
+        const periods = getPeriods();
+
+        // 1. 第一頁：各病房總表 + 個人課表 + 評估ICF + 復工
+        let wardSummaryHtml = state.wards.map(w => {
+          const ot = getTherapist(w.otId);
+          return `
+            <table class="summary-table" style="margin-bottom:8px;">
+              <tr>
+                <th style="width:12%; background:#E8F1F1;">${escapeHtml(w.name)}</th>
+                <th style="width:14%; background:#F3F4F6;">一</th>
+                <th style="width:14%; background:#F3F4F6;">二</th>
+                <th style="width:14%; background:#F3F4F6;">三</th>
+                <th style="width:14%; background:#F3F4F6;">四</th>
+                <th style="width:14%; background:#F3F4F6;">五</th>
+                <th style="width:18%; background:#F9FAFB;">負責OT / WR</th>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; background:#F9FAFB;">上午</td>
+                ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.am[d])) || '&nbsp;'}</td>`).join('')}
+                <td rowspan="2" style="font-size:9.5pt;"><b>${ot ? escapeHtml(ot.name) : ''}</b><br/>${escapeHtml(w.wrTime || '')}</td>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; background:#F9FAFB;">下午</td>
+                ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.pm[d])) || '&nbsp;'}</td>`).join('')}
+              </tr>
+            </table>
+          `;
+        }).join('');
+
+        // 個人活動時間表
+        let personalSummaryHtml = state.therapists.map(t => `
+          <table class="summary-table" style="margin-bottom:6px;">
+            <tr>
+              <th style="width:14%; background:#E8F1F1;">${escapeHtml(t.name)} (${escapeHtml(t.short)})</th>
+              <th style="width:17.2%; background:#F3F4F6;">一</th>
+              <th style="width:17.2%; background:#F3F4F6;">二</th>
+              <th style="width:17.2%; background:#F3F4F6;">三</th>
+              <th style="width:17.2%; background:#F3F4F6;">四</th>
+              <th style="width:17.2%; background:#F3F4F6;">五</th>
+            </tr>
+            <tr>
+              <td style="background:#FAFAFA; font-size:9pt;">早務</td>
+              ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
+            </tr>
+            <tr>
+              <td style="font-weight:bold;">上午</td>
+              ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'am', d).join('/')) || '&nbsp;'}</td>`).join('')}
+            </tr>
+            <tr>
+              <td style="font-weight:bold;">下午</td>
+              ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'pm', d).join('/')) || '&nbsp;'}</td>`).join('')}
+            </tr>
+            <tr>
+              <td style="background:#FAFAFA; font-size:9pt;">晚務</td>
+              ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
+            </tr>
+          </table>
+        `).join('');
+
+        // 評估ICF 與 復工總表
+        const evalRowsHtml = [
+          ['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']
+        ].map(([label, key]) => `
+          <tr>
+            <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
+            ${DAYS.map((_, d) => {
+              const txt = (state.evalIcf[key][d] || []).map(it => {
+                const t = getTherapist(it.therapistId);
+                return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
+              }).join(' / ');
+              return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
+            }).join('')}
+          </tr>
+        `).join('');
+
+        const rehabRowsHtml = [
+          ['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']
+        ].map(([label, key]) => `
+          <tr>
+            <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
+            ${DAYS.map((_, d) => {
+              const t = getTherapist(state.rehab[key][d]);
+              return `<td>${t ? escapeHtml(t.short) : '&nbsp;'}</td>`;
+            }).join('')}
+          </tr>
+        `).join('');
+
+        // 2. 後續每頁一間病房公告表 (8W ~ 12W)
+        const wardPagesHtml = state.wards.map(w => {
+          const ot = getTherapist(w.otId);
+          const wardNum = w.name.replace('W', '');
+          return `
+            <br clear="all" style="page-break-before:always;" />
+            <div style="text-align:center; margin-bottom:10px;">
+              <span style="font-size:18pt; font-weight:bold; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
+                ${state.year}年${periods.label} ${escapeHtml(wardNum)}病房活動時間表
+              </span>
+              <span style="font-size:13pt; font-weight:bold; margin-left:24px; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
+                負責OT：${ot ? escapeHtml(ot.name) : ''}
+              </span>
+            </div>
+            <table class="announce-word-table">
+              <tr>
+                <th style="width:10%; background:#F3F4F6;">時間</th>
+                <th style="width:18%; background:#F3F4F6;">星期一</th>
+                <th style="width:18%; background:#F3F4F6;">星期二</th>
+                <th style="width:18%; background:#F3F4F6;">星期三</th>
+                <th style="width:18%; background:#F3F4F6;">星期四</th>
+                <th style="width:18%; background:#F3F4F6;">星期五</th>
+              </tr>
+              <tr>
+                <td style="font-weight:bold; font-size:13pt; background:#F9FAFB; height:165px;">上午<br/>活動</td>
+                ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.am[d], periods, true)}</td>`).join('')}
+              </tr>
+              <tr>
+                <td style="font-weight:bold; font-size:13pt; background:#F9FAFB; height:165px;">下午<br/>活動</td>
+                ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.pm[d], periods, true)}</td>`).join('')}
+              </tr>
+            </table>
+          `;
+        }).join('');
+
+        const docHtml = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:w="urn:schemas-microsoft-com:office:word"
+                xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8" />
+            <title>${state.year}年${periods.label}病房活動時間表</title>
+            <style>
+              @page Section1 {
+                size: 29.7cm 21.0cm;
+                mso-page-orientation: landscape;
+                margin: 1.2cm 1.2cm 1.2cm 1.2cm;
+              }
+              div.Section1 { page: Section1; }
+              body {
+                font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+                color: #000000;
+              }
+              h2 {
+                font-size: 14pt;
+                margin: 6px 0 8px 0;
+                text-align: center;
+              }
+              h3 {
+                font-size: 11.5pt;
+                margin: 10px 0 4px 0;
+              }
+              table.summary-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10pt;
+              }
+              table.summary-table th, table.summary-table td {
+                border: 1px solid #000000;
+                padding: 3px 4px;
+                text-align: center;
+                vertical-align: middle;
+              }
+              table.announce-word-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-family: "標楷體", "DFKai-SB", "Microsoft JhengHei", sans-serif;
+                font-size: 12pt;
+              }
+              table.announce-word-table th, table.announce-word-table td {
+                border: 1.5px solid #000000;
+                text-align: center;
+                vertical-align: middle;
+              }
+              table.announce-word-table th {
+                padding: 8px 4px;
+                font-size: 13pt;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="Section1">
+              <h2>${state.year}年${periods.label} 精神科病房職能治療活動時間總表</h2>
+              ${wardSummaryHtml}
+
+              <br clear="all" style="page-break-before:always;" />
+              <h2>${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作總表</h2>
+              ${personalSummaryHtml}
+
+              <h3>評估與 ICF 總表</h3>
+              <table class="summary-table" style="margin-bottom:8px;">
+                <tr>
+                  <th style="width:14%; background:#F3F4F6;">類別</th>
+                  <th style="width:17.2%; background:#F3F4F6;">一</th>
+                  <th style="width:17.2%; background:#F3F4F6;">二</th>
+                  <th style="width:17.2%; background:#F3F4F6;">三</th>
+                  <th style="width:17.2%; background:#F3F4F6;">四</th>
+                  <th style="width:17.2%; background:#F3F4F6;">五</th>
+                </tr>
+                ${evalRowsHtml}
+              </table>
+
+              <h3>復健工作（復工）總表</h3>
+              <table class="summary-table" style="margin-bottom:8px;">
+                <tr>
+                  <th style="width:14%; background:#F3F4F6;">項目</th>
+                  <th style="width:17.2%; background:#F3F4F6;">一</th>
+                  <th style="width:17.2%; background:#F3F4F6;">二</th>
+                  <th style="width:17.2%; background:#F3F4F6;">三</th>
+                  <th style="width:17.2%; background:#F3F4F6;">四</th>
+                  <th style="width:17.2%; background:#F3F4F6;">五</th>
+                </tr>
+                ${rehabRowsHtml}
+              </table>
+
+              <p style="font-size:10pt; margin-top:6px;">
+                <b>活動輪替順序：</b>${escapeHtml(state.activities.join(' → '))}　｜　
+                <b>紀錄二次順序：</b>${escapeHtml(state.recordOrder)}（本期：${escapeHtml(state.recordCurrent)}）　｜　
+                ${escapeHtml(state.footerNote)}
+              </p>
+
+              ${wardPagesHtml}
+            </div>
+          </body>
+          </html>
+        `;
+
+        const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const filename = `${state.year}年${periods.label}_病房活動時間表.doc`;
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(`已成功匯出 Word：${filename}`, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('匯出 Word 時發生錯誤', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 12. 共用 Modal 與 Toast 系統（不使用 alert/confirm）
+    // =========================================================================
+    function openModal(title, bodyHtml, footerHtml) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').innerHTML = bodyHtml;
+      document.getElementById('modalFooter').innerHTML = footerHtml;
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.classList.remove('hidden');
+      backdrop.classList.add('flex');
+    }
+
+    function closeModal() {
+      const backdrop = document.getElementById('modalBackdrop');
+      backdrop.classList.add('hidden');
+      backdrop.classList.remove('flex');
+    }
+
+    function closeModalOnBackdrop(event) {
+      if (event.target.id === 'modalBackdrop') closeModal();
+    }
+
+    let pendingConfirmAction = null;
+    function openConfirmModal(title, message, onConfirm) {
+      pendingConfirmAction = onConfirm;
+      openModal(
+        title,
+        `<p class="text-sm text-slate-700 leading-relaxed">${message}</p>`,
+        `
+          <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+          <button onclick="executeConfirmModal()" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-red hover:bg-red-700 text-white">確定執行</button>
+        `
+      );
+    }
+
+    function executeConfirmModal() {
+      const fn = pendingConfirmAction;
+      pendingConfirmAction = null;
+      closeModal();
+      if (typeof fn === 'function') fn();
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const colorMap = {
+        success: 'bg-morandi-teal text-white border-morandi-tealDark',
+        error: 'bg-morandi-red text-white border-red-700',
+        info: 'bg-slate-800 text-white border-slate-900'
+      };
+      el.className = `pointer-events-auto px-4 py-2.5 rounded-xl border shadow-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0 ${colorMap[type] || colorMap.info}`;
+      el.textContent = message;
+      container.appendChild(el);
+
+      requestAnimationFrame(() => {
+        el.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => el.remove(), 300);
+      }, 2600);
+    }
+
+    // =========================================================================
+    // 13. 事件綁定與初始化
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+
+      // 年份與半年度輸入監聽
+      document.getElementById('yearInput').addEventListener('change', (e) => {
+        const val = parseInt(e.target.value, 10);
+        if (!isNaN(val) && val > 0) {
+          state.year = val;
+          saveState();
+          renderAll();
+        }
+      });
+
+      document.getElementById('halfSelect').addEventListener('change', (e) => {
+        state.half = e.target.value;
+        saveState();
+        renderAll();
+      });
+
+      // Tab 2 備註欄位監聽
+      ['recordOrderInput', 'recordCurrentInput', 'footerNoteInput'].forEach(id => {
+        document.getElementById(id).addEventListener('input', (e) => {
+          const map = {
+            recordOrderInput: 'recordOrder',
+            recordCurrentInput: 'recordCurrent',
+            footerNoteInput: 'footerNote'
+          };
+          state[map[id]] = e.target.value;
+          saveState();
+        });
+      });
+
+      // 預設進入 Tab 1
+      switchTab('wards');
+    });
+  </script>
+</body>
+</html>
