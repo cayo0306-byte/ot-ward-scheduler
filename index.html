@@ -6,8 +6,36 @@
   <title>精神科病房職能治療活動時間表排程系統</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- SheetJS for Excel (.xlsx) Export -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.full.min.js"></script>
+  <!-- SheetJS 官方正確路徑 (/dist/) + 備援載入函式 -->
+  <script>
+    window.__sheetJsFallbackLoading = false;
+    function loadSheetJSFallback(onDone) {
+      if (typeof window.XLSX !== 'undefined') {
+        if (typeof onDone === 'function') onDone(true);
+        return;
+      }
+      if (window.__sheetJsFallbackLoading) {
+        setTimeout(() => {
+          if (typeof onDone === 'function') onDone(typeof window.XLSX !== 'undefined');
+        }, 1200);
+        return;
+      }
+      window.__sheetJsFallbackLoading = true;
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      script.async = true;
+      script.onload = function () {
+        window.__sheetJsFallbackLoading = false;
+        if (typeof onDone === 'function') onDone(typeof window.XLSX !== 'undefined');
+      };
+      script.onerror = function () {
+        window.__sheetJsFallbackLoading = false;
+        if (typeof onDone === 'function') onDone(false);
+      };
+      document.head.appendChild(script);
+    }
+  </script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" onerror="loadSheetJSFallback()"></script>
   <!-- Firebase Compat SDK v10.12.2 (App & Firestore) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -50,7 +78,6 @@
       background-color: #F5F2EB;
       color: #2F3A3D;
     }
-    /* Custom subtle scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
@@ -79,7 +106,6 @@
       background-color: #FDF2F2 !important;
       box-shadow: inset 0 0 0 2px #C85A5A !important;
     }
-    /* Announcement Preview Table Styling */
     .announce-table {
       border-collapse: collapse;
       width: 100%;
@@ -169,12 +195,10 @@
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
         padding: 8px 4px;
-        font-size: 14pt;
         font-weight: bold;
       }
       .print-announce-table td {
         padding: 6px 4px;
-        height: 68mm;
       }
     }
   </style>
@@ -186,7 +210,7 @@
     <div class="max-w-[1440px] mx-auto px-3 sm:px-6 py-3">
       <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <!-- 標題與期別選擇 -->
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <div class="flex items-center gap-2.5">
             <div class="w-9 h-9 rounded-xl bg-morandi-teal text-white flex items-center justify-center shadow-sm shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -206,13 +230,12 @@
             <label for="periodSelect" class="text-xs font-bold text-slate-600 pl-1">目前期別</label>
             <select id="periodSelect" onchange="switchPeriod(this.value)"
               class="text-xs sm:text-sm font-bold text-morandi-tealDark bg-white border border-cream-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-morandi-teal cursor-pointer">
-              <!-- 由 JS 動態渲染歷年期別 -->
             </select>
-            <button onclick="openNewPeriodModal()" title="新增半年期別"
+            <button type="button" onclick="openNewPeriodModal()" title="新增半年期別"
               class="px-2 py-1 text-xs font-bold rounded-lg bg-morandi-teal hover:bg-morandi-tealDark text-white transition flex items-center gap-1">
               <span>＋ 新增期別</span>
             </button>
-            <button onclick="confirmDeleteCurrentPeriod()" title="刪除目前期別"
+            <button type="button" onclick="confirmDeleteCurrentPeriod()" title="刪除目前期別"
               class="p-1 text-slate-400 hover:text-morandi-red hover:bg-morandi-redLight rounded-lg transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             </button>
@@ -224,40 +247,40 @@
               class="px-2.5 py-1 text-xs font-semibold rounded-xl bg-cream-100 text-slate-600 border border-cream-300 flex items-center gap-1 whitespace-nowrap">
               💾 本機模式
             </span>
-            <button id="manualSyncBtn" onclick="manualCloudSync()" title="從雲端重新同步所有期別"
+            <button type="button" id="manualSyncBtn" onclick="manualCloudSync()" title="從雲端重新同步所有期別"
               class="hidden p-1.5 rounded-xl bg-white hover:bg-morandi-tealLight text-morandi-teal border border-cream-300 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </button>
           </div>
 
-          <!-- 編輯密碼鎖狀態切換按鈕 -->
-          <button id="editLockBtn" onclick="toggleEditLock()"
-            class="px-3 py-1.5 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 whitespace-nowrap shadow-xs">
-            🔒 唯讀模式（解鎖編輯）
+          <!-- 編輯密碼鎖狀態切換按鈕（由 DOMContentLoaded 以 addEventListener 綁定） -->
+          <button type="button" id="lockToggleBtn"
+            class="px-3 py-1.5 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 whitespace-nowrap shadow-xs cursor-pointer">
+            🔒 唯讀模式（點此解鎖）
           </button>
         </div>
 
         <!-- 右側操作按鈕 -->
         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <button onclick="openFirebaseConfigModal()"
+          <button type="button" onclick="openFirebaseConfigModal()"
             class="px-2.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 transition flex items-center gap-1">
             <span>☁️ 雲端設定</span>
           </button>
 
-          <button onclick="confirmLoadTemplate()"
+          <button type="button" onclick="confirmLoadTemplate()"
             class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-700 border border-cream-300 transition flex items-center gap-1.5">
             <svg class="w-4 h-4 text-morandi-teal" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             <span>載入 113 下半年範本</span>
           </button>
 
-          <button onclick="confirmClearAll()"
+          <button type="button" onclick="confirmClearAll()"
             class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-xl bg-white hover:bg-morandi-redLight text-morandi-red border border-red-200 transition flex items-center gap-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             <span>清空排程</span>
           </button>
 
           <div class="relative inline-flex rounded-xl shadow-sm">
-            <button onclick="exportJSON()"
+            <button type="button" onclick="exportJSON()"
               class="px-2.5 py-1.5 text-xs sm:text-sm font-medium rounded-l-xl bg-white hover:bg-cream-100 text-slate-700 border border-cream-300 transition flex items-center gap-1" title="儲存專案 JSON 檔">
               <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
               <span class="hidden sm:inline">存專案</span>
@@ -269,7 +292,7 @@
             </label>
           </div>
 
-          <button onclick="openExportModal()"
+          <button type="button" onclick="openExportModal()"
             class="px-3.5 py-1.5 text-xs sm:text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-md hover:shadow-lg transition flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             <span>一鍵輸出 / 選擇病房列印</span>
@@ -278,18 +301,18 @@
       </div>
 
       <!-- 分頁導覽列 (Tabs) -->
-      <nav class="mt-3 flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar">
-        <button data-tab="wards" onclick="switchTab('wards')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap flex items-center gap-1.5">
+      <nav class="mt-3 flex items-center gap-1 overflow-x-auto pb-0.5">
+        <button type="button" data-tab="wards" onclick="switchTab('wards')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap flex items-center gap-1.5">
           <span>1. 各病房活動排程</span>
           <span id="tabConflictBadge" class="hidden px-1.5 py-0.5 text-[11px] font-bold rounded-full bg-morandi-red text-white">0</span>
         </button>
-        <button data-tab="personal" onclick="switchTab('personal')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+        <button type="button" data-tab="personal" onclick="switchTab('personal')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
           2. 個人課表 / 評估 ICF / 復健工作
         </button>
-        <button data-tab="rotation" onclick="switchTab('rotation')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+        <button type="button" data-tab="rotation" onclick="switchTab('rotation')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
           3. 活動輪替設定與各病房公告預覽
         </button>
-        <button data-tab="settings" onclick="switchTab('settings')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
+        <button type="button" data-tab="settings" onclick="switchTab('settings')" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap">
           4. 人員與基本設定
         </button>
       </nav>
@@ -304,10 +327,10 @@
       <!-- 快速點選畫筆工具列 -->
       <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
             <span class="text-sm font-bold text-slate-800">快速點選工具列</span>
             <span id="activeBrushHint" class="text-xs px-2.5 py-0.5 rounded-full bg-morandi-tealLight text-morandi-tealDark font-medium">
-              請選擇下方治療師或標籤進行快速點選，或切換至「編輯模式」開啟詳細視窗
+              請選擇下方治療師或標籤進行快速點選，或切換至「編輯視窗模式」開啟詳細視窗
             </span>
           </div>
           <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none bg-cream-50 px-2.5 py-1 rounded-lg border border-cream-200">
@@ -316,12 +339,10 @@
           </label>
         </div>
 
-        <div id="brushToolbar" class="flex flex-wrap items-center gap-2">
-          <!-- 由 JS 動態渲染：編輯模式按鈕 + 治療師畫筆 + 特殊標籤 + 橡皮擦 -->
-        </div>
+        <div id="brushToolbar" class="flex flex-wrap items-center gap-2"></div>
       </div>
 
-      <!-- 衝堂警示橫幅 (有衝堂時才顯示) -->
+      <!-- 衝堂警示橫幅 -->
       <div id="conflictBanner" class="hidden bg-morandi-redLight border border-red-300 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-start gap-2.5">
         <div class="flex items-center gap-2 text-morandi-red font-bold text-sm shrink-0">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -331,55 +352,43 @@
       </div>
 
       <!-- 5 個病房排班卡片區 -->
-      <div id="wardsGrid" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <!-- 由 JS 動態渲染 8W ~ 12W -->
-      </div>
+      <div id="wardsGrid" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div>
 
       <!-- 底部即時工作量統計面板 -->
       <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-morandi-teal"></span>
             本週治療師工作量即時統計
           </h2>
           <span class="text-xs text-slate-500">自動統計各病房活動、評估、ICF 與復工（園藝＋掃地）次數</span>
         </div>
-        <div id="statsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5">
-          <!-- 由 JS 動態渲染 -->
-        </div>
+        <div id="statsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5"></div>
       </div>
     </section>
 
     <!-- ==================== TAB 2: 個人課表 / 評估 ICF / 復健工作 ==================== -->
     <section id="tab-personal" class="tab-panel hidden space-y-6">
-      <!-- 個人活動時間表總覽 -->
       <div class="space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 class="text-base font-bold text-slate-800">個人活動時間表總覽</h2>
-            <p class="text-xs text-slate-500">「上午/下午」自動同步各病房排程；點擊「早務/晚務」格子可直接加入或移除額外業務（如：兒心、巡迴、戒治、教學、會議、WR 等）。</p>
-          </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-800">個人活動時間表總覽</h2>
+          <p class="text-xs text-slate-500">「上午/下午」自動同步各病房排程；點擊「早務/晚務」格子可直接加入或移除額外業務（如：兒心、巡迴、戒治、教學、會議、WR 等）。</p>
         </div>
-        <div id="personalSchedulesGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <!-- 由 JS 動態渲染每位治療師個人週表 -->
-        </div>
+        <div id="personalSchedulesGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
       </div>
 
-      <!-- 評估與 ICF 總表 + 復健工作總表 -->
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <!-- 評估與 ICF 總表 -->
         <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-sm font-bold text-slate-800">評估與 ICF 總表</h3>
-              <p class="text-xs text-slate-500">點擊任一格子指派治療師、時間與類別（成人／兒童），自動同步至個人課表</p>
+              <p class="text-xs text-slate-500">點擊任一格子指派治療師、時間與類別（不指定／兒童／成人），自動同步至個人課表</p>
             </div>
             <span class="text-xs px-2 py-0.5 rounded-lg bg-morandi-tealLight text-morandi-tealDark font-medium">雙向同步</span>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full border-collapse text-xs sm:text-sm" id="evalIcfTable">
-              <!-- 由 JS 動態渲染 -->
-            </table>
+            <table class="w-full border-collapse text-xs sm:text-sm" id="evalIcfTable"></table>
           </div>
         </div>
 
@@ -393,9 +402,7 @@
             <span class="text-xs px-2 py-0.5 rounded-lg bg-morandi-tealLight text-morandi-tealDark font-medium">雙向同步</span>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full border-collapse text-xs sm:text-sm" id="rehabTable">
-              <!-- 由 JS 動態渲染 -->
-            </table>
+            <table class="w-full border-collapse text-xs sm:text-sm" id="rehabTable"></table>
           </div>
         </div>
       </div>
@@ -420,7 +427,7 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1">總表底部附註</label>
             <input id="footerNoteInput" type="text"
               class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
-              placeholder="例如：評估/ICF 類別：成人、兒童" />
+              placeholder="例如：評估/ICF 類別：不指定、兒童、成人" />
           </div>
         </div>
       </div>
@@ -428,68 +435,64 @@
 
     <!-- ==================== TAB 3: 活動輪替設定與各病房公告預覽 ==================== -->
     <section id="tab-rotation" class="tab-panel hidden space-y-6">
-      <!-- 活動輪替順序設定 -->
       <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 class="text-sm font-bold text-slate-800">1. 活動輪替順序設定</h2>
-            <p class="text-xs text-slate-500">可自由修改活動名稱，系統將依序為每位治療師自動推算三期輪替活動</p>
-          </div>
+        <div>
+          <h2 class="text-sm font-bold text-slate-800">1. 活動輪替順序設定</h2>
+          <p class="text-xs text-slate-500">可自由修改活動名稱，系統將依序為每位治療師自動推算三期輪替活動</p>
         </div>
-        <div id="activitySequenceEditor" class="flex flex-wrap items-center gap-2">
-          <!-- 由 JS 動態渲染 -->
-        </div>
+        <div id="activitySequenceEditor" class="flex flex-wrap items-center gap-2"></div>
       </div>
 
-      <!-- 治療師起始活動與三期對照表 -->
       <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-4 space-y-3">
         <div>
           <h2 class="text-sm font-bold text-slate-800">2. 治療師起始活動設定與三期輪替對照表</h2>
           <p class="text-xs text-slate-500">選擇每位治療師第 1 期的負責活動，第 2 期與第 3 期將依上方順序自動推算</p>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-sm" id="therapistRotationTable">
-            <!-- 由 JS 動態渲染 -->
-          </table>
+          <table class="w-full border-collapse text-sm" id="therapistRotationTable"></table>
         </div>
       </div>
 
-      <!-- 各病房公告版預覽 -->
       <div class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-bold text-slate-800">3. 各病房公告版預覽（列印與 Word 張貼格式）</h2>
             <p class="text-xs text-slate-500">以下呈現 8W～12W 公告版實際樣貌，可針對單一病房直接列印／下載 Word，或點選右側開啟多選輸出視窗</p>
           </div>
-          <button onclick="openExportModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center gap-1.5">
+          <button type="button" onclick="openExportModal()" class="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             <span>批次勾選列印 / 匯出</span>
           </button>
         </div>
-        <div id="announcementsContainer" class="space-y-6">
-          <!-- 由 JS 動態渲染 8W ~ 12W 公告卡片 -->
-        </div>
+        <div id="announcementsContainer" class="space-y-6"></div>
       </div>
     </section>
 
     <!-- ==================== TAB 4: 人員與基本設定 ==================== -->
     <section id="tab-settings" class="tab-panel hidden space-y-5">
+      <!-- 治療師名單 -->
       <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-bold text-slate-800">治療師名單與代表色管理</h2>
             <p class="text-xs text-slate-500">可新增、修改或刪除治療師；修改簡稱、全名或代表色會即時套用至所有表格與匯出檔案</p>
           </div>
-          <button onclick="addNewTherapist()"
+          <button type="button" onclick="addNewTherapist()"
             class="px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
             <span>新增治療師</span>
           </button>
         </div>
+        <div id="therapistSettingsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5"></div>
+      </div>
 
-        <div id="therapistSettingsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          <!-- 由 JS 動態渲染 -->
+      <!-- 病房設定 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-5 space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-800">病房基本設定</h2>
+          <p class="text-xs text-slate-500">快速調整 8W～12W 負責職能治療師與 WR 時間，將同步至排程卡片與公告表</p>
         </div>
+        <div id="wardSettingsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5"></div>
       </div>
 
       <!-- 編輯密碼鎖設定卡片 -->
@@ -500,11 +503,11 @@
               <span>🔐 編輯密碼鎖設定</span>
               <span id="settingsLockBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">目前鎖定</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">保護線上排程避免同仁誤觸改動；修改後將自動同步至雲端（Firestore），全科共用統一新密碼。</p>
+            <p class="text-xs text-slate-500 mt-0.5">保護線上排程避免同仁誤觸改動；修改後將自動同步至雲端（Firestore <code class="px-1 py-0.5 bg-cream-100 rounded">_system_config</code>），全科共用統一新密碼。</p>
           </div>
         </div>
 
-        <div id="passwordSettingsBody" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">設定新密碼</label>
             <input id="newEditPasswordInput" type="password" autocomplete="new-password"
@@ -518,13 +521,13 @@
               placeholder="請再次輸入新密碼" />
           </div>
           <div>
-            <button onclick="saveNewEditPassword()"
+            <button type="button" onclick="saveNewEditPassword()"
               class="w-full px-4 py-2 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition">
               儲存並同步新密碼
             </button>
           </div>
         </div>
-        <p class="text-[11px] text-slate-400">提示：預設密碼為 <code class="px-1 py-0.5 bg-cream-100 rounded text-slate-600">1234</code>。未解鎖狀態下僅能瀏覽、切換期別與列印匯出，無法修改排程與密碼。</p>
+        <p class="text-[11px] text-slate-400">提示：預設密碼為 <code class="px-1 py-0.5 bg-cream-100 rounded text-slate-600">ot1234</code>。未解鎖狀態下僅能瀏覽、切換期別與列印／匯出（Word、Excel、存專案），無法修改排程與密碼。</p>
       </div>
     </section>
 
@@ -532,19 +535,15 @@
 
   <!-- ==================== 共用 Modal 容器 ==================== -->
   <div id="modalBackdrop" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] hidden items-center justify-center p-4" onclick="closeModalOnBackdrop(event)">
-    <div id="modalCard" class="bg-white rounded-2xl border border-cream-200 shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+    <div id="modalCard" class="bg-white rounded-2xl border border-cream-200 shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
       <div class="px-5 py-3.5 bg-cream-50 border-b border-cream-200 flex items-center justify-between">
         <h3 id="modalTitle" class="text-base font-bold text-slate-800">標題</h3>
-        <button onclick="closeModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-cream-200 transition">
+        <button type="button" onclick="closeModal()" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-cream-200 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <div id="modalBody" class="p-5 max-h-[75vh] overflow-y-auto space-y-4">
-        <!-- 動態內容 -->
-      </div>
-      <div id="modalFooter" class="px-5 py-3 bg-cream-50 border-t border-cream-200 flex justify-end gap-2">
-        <!-- 動態按鈕 -->
-      </div>
+      <div id="modalBody" class="p-5 max-h-[75vh] overflow-y-auto space-y-4"></div>
+      <div id="modalFooter" class="px-5 py-3 bg-cream-50 border-t border-cream-200 flex justify-end gap-2"></div>
     </div>
   </div>
 
@@ -556,9 +555,8 @@
 
   <script>
     // =========================================================================
-    // 0. Firebase Firestore 雲端同步設定區（可直接填入後上傳至 GitHub Pages）
+    // 0. Firebase Firestore 雲端同步與密碼鎖常數設定
     // =========================================================================
-    // 已內建您的 Firebase 專案金鑰，同仁打開網址即可自動連線雲端同步
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey: "AIzaSyDDrK3UBv7fGutDGYiBfaopfszhnCmQU5g",
       authDomain: "spyclinic1122.firebaseapp.com",
@@ -567,20 +565,19 @@
       messagingSenderId: "945242946948",
       appId: "1:945242946948:web:e804315a481e154fb271d1"
     };
-    // Firestore 集合名稱（共用現有 Firebase 專案時可獨立區隔資料，不影響其他系統）
-    const FIRESTORE_COLLECTION = "ot_ward_schedules";
-    const SETTINGS_DOC_ID = "_settings";
-    const FIREBASE_CONFIG_STORAGE_KEY = "ot_ward_scheduler_firebase_cfg_v1";
-    const EDIT_PWD_STORAGE_KEY = "ot_ward_scheduler_edit_pwd_v1";
-    const UNLOCK_SESSION_KEY = "ot_ward_scheduler_unlocked_v1";
-    const DEFAULT_EDIT_PASSWORD = "1234";
 
-    // =========================================================================
-    // 1. 常數定義與預設範本資料 (113 下半年)
-    // =========================================================================
-    const STORAGE_KEY = 'ot_ward_scheduler_state_v1'; // 舊版單期相容用
-    const PERIODS_STORAGE_KEY = 'ot_ward_scheduler_periods_v2'; // 新版多期別儲存鍵
+    const FIRESTORE_COLLECTION = "ot_ward_schedules";
+    const SYSTEM_CONFIG_DOC_ID = "_system_config";
+    const LEGACY_SETTINGS_DOC_ID = "_settings";
+    const FIREBASE_CONFIG_STORAGE_KEY = "ot_ward_scheduler_firebase_cfg_v1";
+    const EDIT_PWD_STORAGE_KEY = "ot_ward_scheduler_edit_pwd_v2";
+    const UNLOCK_SESSION_KEY = "ot_ward_scheduler_unlocked_v1";
+    const DEFAULT_EDIT_PASSWORD = "ot1234";
+
+    const STORAGE_KEY = 'ot_ward_scheduler_state_v1';
+    const PERIODS_STORAGE_KEY = 'ot_ward_scheduler_periods_v2';
     const ACTIVE_PERIOD_STORAGE_KEY = 'ot_ward_scheduler_active_period_v2';
+
     const DAYS = ['一', '二', '三', '四', '五'];
     const DAYS_FULL = ['星期一', '星期二', '星期三', '星期四', '星期五'];
     const SPECIAL_TAGS = ['WR', '烹飪', '購物', '衛教時間', '外出'];
@@ -602,6 +599,24 @@
       { color: '#7D7463', bg: '#F2F0EC', border: '#CFC9BE' }
     ];
 
+    // 列印 / Word 版面微調預設設定
+    const PRINT_LAYOUT_PREFS = {
+      fontSize: 'standard', // 'compact' | 'standard' | 'large'
+      rowHeight: 'standard' // 'compact' | 'standard' | 'tall'
+    };
+
+    const FONT_PRESET_MAP = {
+      compact:  { titlePt: 17, subtitlePt: 12, thPt: 12, namePt: 10.5, rotPt: 8.5, tagPt: 11 },
+      standard: { titlePt: 20, subtitlePt: 14, thPt: 13.5, namePt: 12, rotPt: 9.5, tagPt: 12.5 },
+      large:    { titlePt: 23, subtitlePt: 15.5, thPt: 15, namePt: 14, rotPt: 11, tagPt: 14 }
+    };
+
+    const ROW_HEIGHT_PRESET_MAP = {
+      compact:  { printMm: '52mm', wordPx: '140px' },
+      standard: { printMm: '66mm', wordPx: '180px' },
+      tall:     { printMm: '76mm', wordPx: '225px' }
+    };
+
     function createEmptyCell() {
       return { therapistIds: [], tags: [], customNote: '' };
     }
@@ -616,7 +631,7 @@
     /**
      * 建立 113 下半年完整範本資料
      */
-    function build113H2Template(yearOverride = 114, halfOverride = 'H1') {
+    function build113H2Template(yearOverride = 113, halfOverride = 'H2') {
       const therapists = [
         { id: 't_ou', short: '歐', name: '歐俞宏', ...MORANDI_PALETTE[0], startActivityIndex: 4 },
         { id: 't_chen', short: '陳', name: '陳雅玲', ...MORANDI_PALETTE[1], startActivityIndex: 0 },
@@ -683,7 +698,7 @@
           [],
           [{ therapistId: 't_wu', time: '9:00', category: '成人' }],
           [{ therapistId: 't_yi', time: '8:30', category: '兒童' }],
-          [{ therapistId: 't_ou', time: '8:30', category: '成人' }],
+          [{ therapistId: 't_ou', time: '8:30', category: '' }],
           []
         ],
         pmEval: [
@@ -697,7 +712,7 @@
           [{ therapistId: 't_lin', time: '14:00', category: '成人' }],
           [],
           [{ therapistId: 't_chen', time: '14:00', category: '兒童' }],
-          [{ therapistId: 't_chang', time: '16:00', category: '成人' }],
+          [{ therapistId: 't_chang', time: '16:00', category: '' }],
           []
         ]
       };
@@ -733,25 +748,28 @@
         personalExtra,
         recordOrder: '歐黃陳吳林張儀',
         recordCurrent: '儀 歐 吳',
-        footerNote: '評估/ICF 類別：成人、兒童'
+        footerNote: '評估/ICF 類別：不指定、兒童、成人'
       };
     }
 
     // =========================================================================
-    // 2. 系統狀態管理 (Multi-Period State, LocalStorage & Firebase Sync)
+    // 1. 系統狀態與編輯密碼鎖管理
     // =========================================================================
-    let periodsStore = {};      // { "114-H1": { ...state }, "113-H2": { ...state } }
-    let currentPeriodKey = '';  // 目前選中的期別代碼，例如 "113-H2"
-    let state = null;           // 指向 periodsStore[currentPeriodKey]
+    let periodsStore = {};
+    let currentPeriodKey = '';
+    let state = null;
     let activeTab = 'wards';
-    // brush: { mode: 'edit' | 'therapist' | 'tag' | 'eraser', value: string }
     let activeBrush = { mode: 'edit', value: '' };
 
-    // Firebase 雲端連線實例與狀態
+    // Firebase 雲端狀態
     let firebaseApp = null;
     let firestoreDb = null;
     let isCloudConnected = false;
     let syncDebounceTimer = null;
+
+    // 編輯密碼鎖狀態（預設唯讀，使用 sessionStorage 記住同一分頁的解鎖狀態）
+    let isEditUnlocked = sessionStorage.getItem(UNLOCK_SESSION_KEY) === 'true';
+    let currentEditPassword = localStorage.getItem(EDIT_PWD_STORAGE_KEY) || DEFAULT_EDIT_PASSWORD;
 
     function makePeriodKey(year, half) {
       return `${year}-${half}`;
@@ -805,37 +823,111 @@
       }
     }
 
-    // 唯讀 / 編輯密碼鎖狀態（同一分頁暫存於 sessionStorage）
-    let isEditMode = sessionStorage.getItem(UNLOCK_SESSION_KEY) === 'true';
+    /**
+     * 更新頂部與 Tab 4 的鎖定狀態 UI
+     */
+    function updateLockUI() {
+      const btn = document.getElementById('lockToggleBtn');
+      const settingsBadge = document.getElementById('settingsLockBadge');
+      if (btn) {
+        if (isEditUnlocked) {
+          btn.className = 'px-3 py-1.5 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 whitespace-nowrap shadow-xs cursor-pointer bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100';
+          btn.textContent = '🔓 編輯模式（點此上鎖）';
+        } else {
+          btn.className = 'px-3 py-1.5 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 whitespace-nowrap shadow-xs cursor-pointer bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100';
+          btn.textContent = '🔒 唯讀模式（點此解鎖）';
+        }
+      }
+      if (settingsBadge) {
+        if (isEditUnlocked) {
+          settingsBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+          settingsBadge.textContent = '已解鎖（可修改）';
+        } else {
+          settingsBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200';
+          settingsBadge.textContent = '目前鎖定';
+        }
+      }
+    }
+
+    /**
+     * 頂部 #lockToggleBtn 點擊處理函式（透過 addEventListener 綁定）
+     */
+    function handleLockToggleClick() {
+      if (isEditUnlocked) {
+        isEditUnlocked = false;
+        sessionStorage.removeItem(UNLOCK_SESSION_KEY);
+        activeBrush = { mode: 'edit', value: '' };
+        updateLockUI();
+        renderAll();
+        showToast('已切換回唯讀模式', 'info');
+      } else {
+        openUnlockModal();
+      }
+    }
+
+    /**
+     * 彈出輸入編輯密碼視窗（支援 Enter 送出與內嵌錯誤提示）
+     */
+    function openUnlockModal() {
+      const bodyHtml = `
+        <div class="space-y-3">
+          <p class="text-sm text-slate-600 leading-relaxed">
+            請輸入編輯密碼以解鎖排程修改權限（預設密碼：<code class="px-1.5 py-0.5 rounded bg-cream-100 font-bold text-morandi-tealDark">ot1234</code>）。
+          </p>
+          <div>
+            <label for="unlockPasswordInput" class="block text-xs font-bold text-slate-600 mb-1">編輯密碼</label>
+            <input id="unlockPasswordInput" type="password" autocomplete="current-password"
+              class="w-full px-3.5 py-2.5 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+              placeholder="請輸入密碼後按 Enter" />
+            <p id="unlockErrorMsg" class="hidden text-xs font-semibold text-morandi-red mt-1.5"></p>
+          </div>
         </div>
       `;
       const footerHtml = `
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-        <button onclick="submitUnlockPassword()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">解鎖編輯</button>
+        <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button type="button" id="confirmUnlockBtn" onclick="submitUnlockPassword()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">解鎖編輯</button>
       `;
       openModal('🔒 輸入編輯密碼', bodyHtml, footerHtml);
+
       setTimeout(() => {
         const inp = document.getElementById('unlockPasswordInput');
-        if (inp) inp.focus();
-      }, 80);
+        if (inp) {
+          inp.focus();
+          inp.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              submitUnlockPassword();
+            }
+          });
+        }
+      }, 60);
     }
 
     function submitUnlockPassword() {
       const inp = document.getElementById('unlockPasswordInput');
+      const errEl = document.getElementById('unlockErrorMsg');
       const val = inp ? inp.value.trim() : '';
+
       if (!val) {
-        showToast('請輸入密碼', 'error');
+        if (errEl) {
+          errEl.textContent = '請輸入編輯密碼';
+          errEl.classList.remove('hidden');
+        }
         return;
       }
+
       if (val === currentEditPassword) {
         isEditUnlocked = true;
         sessionStorage.setItem(UNLOCK_SESSION_KEY, 'true');
         closeModal();
         updateLockUI();
         renderAll();
-        showToast('已解鎖編輯模式', 'success');
+        showToast('已解鎖編輯模式，可以開始排班與修改設定', 'success');
       } else {
-        showToast('密碼錯誤，請重新輸入', 'error');
+        if (errEl) {
+          errEl.textContent = '密碼錯誤，請重新輸入（預設密碼為 ot1234）';
+          errEl.classList.remove('hidden');
+        }
         if (inp) {
           inp.value = '';
           inp.focus();
@@ -844,7 +936,7 @@
     }
 
     /**
-     * 所有寫入／修改操作前的權限檢查
+     * 所有寫入／修改操作前的權限檢查（匯出與列印不呼叫此函式）
      */
     function requireEditPermission() {
       if (isEditUnlocked) return true;
@@ -874,10 +966,11 @@
       if (isCloudConnected && firestoreDb) {
         updateSyncStatusUI('syncing');
         try {
-          await firestoreDb.collection(FIRESTORE_COLLECTION).doc(SETTINGS_DOC_ID).set({
+          await firestoreDb.collection(FIRESTORE_COLLECTION).doc(SYSTEM_CONFIG_DOC_ID).set({
+            payload: JSON.stringify({ editPassword: p1 }),
             editPassword: p1,
             updatedAt: Date.now()
-          }, { merge: true });
+          });
           updateSyncStatusUI('synced');
           showToast('新密碼已儲存並同步至雲端', 'success');
         } catch (err) {
@@ -890,6 +983,9 @@
       }
     }
 
+    // =========================================================================
+    // 2. 本機與雲端多期別資料讀寫（完整 JSON 序列化，避開巢狀陣列限制）
+    // =========================================================================
     function loadLocalPeriods() {
       try {
         const rawMulti = localStorage.getItem(PERIODS_STORAGE_KEY);
@@ -899,7 +995,6 @@
             periodsStore = parsed;
           }
         }
-        // 相容舊版單期 localStorage 自動遷移
         if (Object.keys(periodsStore).length === 0) {
           const rawLegacy = localStorage.getItem(STORAGE_KEY);
           if (rawLegacy) {
@@ -914,7 +1009,6 @@
         console.warn('讀取本機多期別資料失敗，將建立預設範本', e);
       }
 
-      // 首次開啟若無任何期別資料，自動建立「113年 下半年 (7~12月)」範本
       if (Object.keys(periodsStore).length === 0) {
         periodsStore['113-H2'] = build113H2Template(113, 'H2');
       }
@@ -949,9 +1043,6 @@
       });
     }
 
-    /**
-     * 儲存目前期別（立即寫入 localStorage，並以 800ms 防抖動同步至 Firestore）
-     */
     function saveState(showIndicator = false) {
       if (!state || !currentPeriodKey) return;
       periodsStore[currentPeriodKey] = state;
@@ -962,14 +1053,13 @@
         updateSyncStatusUI('syncing');
         clearTimeout(syncDebounceTimer);
         const keyToSave = currentPeriodKey;
-        const payload = JSON.parse(JSON.stringify(state));
-        payload._updatedAt = new Date().toISOString();
+        const termData = JSON.parse(JSON.stringify(state));
+        termData._updatedAt = new Date().toISOString();
 
         syncDebounceTimer = setTimeout(async () => {
           try {
-            // 將期別資料轉為 JSON 字串存入，避免 Firestore 不支援巢狀陣列（Nested arrays）報錯
             await firestoreDb.collection(FIRESTORE_COLLECTION).doc(keyToSave).set({
-              payload: JSON.stringify(payload),
+              payload: JSON.stringify(termData),
               updatedAt: Date.now()
             });
             updateSyncStatusUI('synced');
@@ -982,9 +1072,6 @@
       }
     }
 
-    /**
-     * 取得生效中的 Firebase 設定（程式碼預設優先，其次為瀏覽器儲存）
-     */
     function getEffectiveFirebaseConfig() {
       if (DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey && DEFAULT_FIREBASE_CONFIG.projectId) {
         return { config: DEFAULT_FIREBASE_CONFIG, source: 'code' };
@@ -1003,9 +1090,6 @@
       return { config: null, source: 'none' };
     }
 
-    /**
-     * 初始化並連線 Firebase Firestore，同時載入雲端所有期別
-     */
     async function initFirebaseAndSync(showToastMsg = false) {
       const { config } = getEffectiveFirebaseConfig();
       if (!config || typeof firebase === 'undefined') {
@@ -1017,7 +1101,6 @@
 
       updateSyncStatusUI('syncing', '⏳ 連線雲端...');
       try {
-        // 若已有舊的 Firebase App 實例先移除，確保切換金鑰時能重新連線
         if (firebase.apps && firebase.apps.length > 0) {
           await Promise.all(firebase.apps.map(app => app.delete()));
         }
@@ -1025,8 +1108,7 @@
         firestoreDb = firebase.firestore();
         isCloudConnected = true;
 
-        const ok = await fetchAllPeriodsFromCloud(showToastMsg);
-        return ok;
+        return await fetchAllPeriodsFromCloud(showToastMsg);
       } catch (err) {
         console.error('Firebase 初始化失敗:', err);
         isCloudConnected = false;
@@ -1043,25 +1125,30 @@
       try {
         const snapshot = await firestoreDb.collection(FIRESTORE_COLLECTION).get();
         if (snapshot.empty) {
-          // 雲端尚無資料時，將本機現有期別主動上傳初始化（以 JSON 字串包裝避免巢狀陣列錯誤）
           const keys = Object.keys(periodsStore);
           for (const k of keys) {
-            const payload = JSON.parse(JSON.stringify(periodsStore[k]));
-            payload._updatedAt = new Date().toISOString();
+            const termData = JSON.parse(JSON.stringify(periodsStore[k]));
+            termData._updatedAt = new Date().toISOString();
             await firestoreDb.collection(FIRESTORE_COLLECTION).doc(k).set({
-              payload: JSON.stringify(payload),
+              payload: JSON.stringify(termData),
               updatedAt: Date.now()
             });
           }
         } else {
-          // 合併雲端資料（雲端優先），過濾 _settings 設定文件並相容字串 payload 與舊版物件格式
           const cloudStore = {};
           snapshot.forEach(doc => {
             try {
               const raw = doc.data();
-              if (doc.id === SETTINGS_DOC_ID) {
-                if (raw && typeof raw.editPassword === 'string' && raw.editPassword.trim()) {
-                  currentEditPassword = raw.editPassword.trim();
+              if (doc.id === SYSTEM_CONFIG_DOC_ID || doc.id === LEGACY_SETTINGS_DOC_ID) {
+                const cfg = (raw && typeof raw.payload === 'string') ? JSON.parse(raw.payload) : raw;
+                const pwd = (cfg && typeof cfg.editPassword === 'string' && cfg.editPassword.trim())
+                  ? cfg.editPassword.trim()
+                  : (raw && typeof raw.editPassword === 'string' ? raw.editPassword.trim() : '');
+                if (pwd && doc.id === SYSTEM_CONFIG_DOC_ID) {
+                  currentEditPassword = pwd;
+                  localStorage.setItem(EDIT_PWD_STORAGE_KEY, currentEditPassword);
+                } else if (pwd && !localStorage.getItem(EDIT_PWD_STORAGE_KEY)) {
+                  currentEditPassword = pwd;
                   localStorage.setItem(EDIT_PWD_STORAGE_KEY, currentEditPassword);
                 }
                 return;
@@ -1134,7 +1221,6 @@
       if (!requireEditPermission()) return;
       const sorted = getSortedPeriodKeys();
       const latest = periodsStore[sorted[0]];
-      // 自動推測下一個半年期別
       let suggestYear = latest ? latest.year : 114;
       let suggestHalf = 'H1';
       if (latest) {
@@ -1170,7 +1256,6 @@
 
         <div class="space-y-2.5 pt-1">
           <p class="text-xs font-bold text-slate-600">建立方式</p>
-
           <label class="block p-3 rounded-xl border border-cream-200 bg-cream-50/70 hover:bg-morandi-tealLight/30 cursor-pointer transition">
             <div class="flex items-center gap-2">
               <input type="radio" name="newPeriodMode" value="copy" checked onchange="toggleCopyOptions()" class="text-morandi-teal focus:ring-morandi-teal" />
@@ -1186,12 +1271,10 @@
               </label>
             </div>
           </label>
-
           <label class="flex items-center gap-2 p-3 rounded-xl border border-cream-200 bg-white hover:bg-cream-50 cursor-pointer transition">
             <input type="radio" name="newPeriodMode" value="template" onchange="toggleCopyOptions()" class="text-morandi-teal focus:ring-morandi-teal" />
             <span class="text-sm font-semibold text-slate-800">載入 113 下半年預設範本</span>
           </label>
-
           <label class="flex items-center gap-2 p-3 rounded-xl border border-cream-200 bg-white hover:bg-cream-50 cursor-pointer transition">
             <input type="radio" name="newPeriodMode" value="blank" onchange="toggleCopyOptions()" class="text-morandi-teal focus:ring-morandi-teal" />
             <span class="text-sm font-semibold text-slate-800">建立空白排程（保留目前治療師名單）</span>
@@ -1200,8 +1283,8 @@
       `;
 
       const footerHtml = `
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-        <button onclick="createNewPeriod()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">建立並切換</button>
+        <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button type="button" onclick="createNewPeriod()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">建立並切換</button>
       `;
 
       openModal('新增半年期別', bodyHtml, footerHtml);
@@ -1245,7 +1328,6 @@
       } else if (mode === 'template') {
         newState = build113H2Template(year, half);
       } else {
-        // 空白排程（保留治療師與活動順序）
         newState = JSON.parse(JSON.stringify(state));
         newState.year = year;
         newState.half = half;
@@ -1303,19 +1385,16 @@
     }
 
     // =========================================================================
-    // 2.6 Firebase 雲端設定彈窗與智慧解析器
+    // 2.6 Firebase 雲端設定彈窗
     // =========================================================================
     function parseFirebaseConfigInput(rawText) {
       const text = (rawText || '').trim();
       if (!text) return null;
-
-      // 1. 嘗試直接 JSON.parse
       try {
         const direct = JSON.parse(text);
         if (direct && direct.apiKey && direct.projectId) return direct;
       } catch (_) {}
 
-      // 2. 抽取 {...} 區塊並將 JS 物件語法（未加雙引號的 key、單引號、尾隨逗號）轉為合法 JSON
       const match = text.match(/\{[\s\S]*\}/);
       if (!match) return null;
       let objStr = match[0]
@@ -1324,7 +1403,6 @@
         .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
         .replace(/'/g, '"')
         .replace(/,\s*}/g, '}');
-
       try {
         const parsed = JSON.parse(objStr);
         if (parsed && parsed.apiKey && parsed.projectId) return parsed;
@@ -1347,15 +1425,15 @@
           <label class="block text-xs font-bold text-slate-700 mb-1.5">貼上您的 firebaseConfig（支援整段 JS 碼或 JSON）</label>
           <textarea id="firebaseConfigTextarea" rows="8"
             class="w-full p-3 text-xs font-mono bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
-            placeholder="const firebaseConfig = {\n  apiKey: &quot;AIzaSy...&quot;,\n  authDomain: &quot;...&quot;,\n  projectId: &quot;...&quot;,\n  ...\n};">${escapeHtml(displayVal)}</textarea>
-          <p class="text-[11px] text-slate-500 mt-1">集合名稱：<code class="px-1 py-0.5 bg-cream-100 rounded">${FIRESTORE_COLLECTION}</code>（可安心共用現有 Firebase 專案）</p>
+            placeholder="const firebaseConfig = {\n  apiKey: &quot;AIzaSy...&quot;,\n  ...\n};">${escapeHtml(displayVal)}</textarea>
+          <p class="text-[11px] text-slate-500 mt-1">集合名稱：<code class="px-1 py-0.5 bg-cream-100 rounded">${FIRESTORE_COLLECTION}</code></p>
         </div>
       `;
 
       const footerHtml = `
-        ${source === 'local' ? `<button onclick="disconnectFirebaseLocal()" class="mr-auto px-3 py-1.5 text-xs font-semibold rounded-xl text-morandi-red hover:bg-morandi-redLight transition">清除並改回本機</button>` : ''}
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-        <button onclick="saveAndTestFirebaseConfig()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存並連線測試</button>
+        ${source === 'local' ? `<button type="button" onclick="disconnectFirebaseLocal()" class="mr-auto px-3 py-1.5 text-xs font-semibold rounded-xl text-morandi-red hover:bg-morandi-redLight transition">清除並改回本機</button>` : ''}
+        <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button type="button" onclick="saveAndTestFirebaseConfig()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存並連線測試</button>
       `;
 
       openModal('☁️ Firebase 雲端同步設定', bodyHtml, footerHtml);
@@ -1390,21 +1468,14 @@
     }
 
     /**
-     * 取得評估／ICF 項目的類別文字（相容舊期別的 campus 欄位）
+     * 取得評估／ICF 類別（'' 代表不指定，'兒童' 或 '成人'；相容舊期別資料）
      */
-    function getEvalCategoryLabel(item) {
+    function getEvalCategory(item) {
       if (!item) return '';
-      if (item.category !== undefined) return item.category;
-      return item.campus || '';
-    }
-
-    /**
-     * 取得類別對應的柔和標籤樣式（成人：藍綠、兒童：暖橘）
-     */
-    function getEvalCategoryBadgeClass(cat) {
-      if (cat === '成人') return 'bg-morandi-tealLight text-morandi-tealDark border-morandi-teal/40';
-      if (cat === '兒童') return 'bg-orange-100 text-orange-800 border-orange-300';
-      return 'bg-slate-100 text-slate-600 border-slate-200';
+      const raw = item.category !== undefined ? item.category : (item.campus || '');
+      const val = String(raw || '').trim();
+      if (val === '兒童' || val === '成人') return val;
+      return '';
     }
 
     function getTherapistRotation(therapist) {
@@ -1418,12 +1489,8 @@
       ];
     }
 
-    /**
-     * 計算所有時段的衝堂狀態
-     * 回傳 Map: key = `${therapistId}_${period}_${dayIdx}` -> { reasons: string[], wards: string[], extras: string[] }
-     */
     function detectConflicts() {
-      const slotMap = {}; // `${tId}_${period}_${dayIdx}` -> { wards: [], extras: [] }
+      const slotMap = {};
 
       state.wards.forEach(w => {
         ['am', 'pm'].forEach(period => {
@@ -1471,16 +1538,12 @@
       return conflicts;
     }
 
-    /**
-     * 統計每位治療師本週工作量
-     */
     function calculateStats() {
       const stats = {};
       state.therapists.forEach(t => {
         stats[t.id] = { wards: 0, eval: 0, icf: 0, rehab: 0 };
       });
 
-      // 病房次數
       state.wards.forEach(w => {
         ['am', 'pm'].forEach(p => {
           for (let d = 0; d < 5; d++) {
@@ -1491,7 +1554,6 @@
         });
       });
 
-      // 評估與 ICF
       ['amEval', 'pmEval'].forEach(k => {
         state.evalIcf[k].forEach(dayList => {
           dayList.forEach(item => {
@@ -1507,7 +1569,6 @@
         });
       });
 
-      // 復工
       ['amGarden', 'amSweep', 'pmGarden', 'pmSweep'].forEach(k => {
         state.rehab[k].forEach(tId => {
           if (tId && stats[tId]) stats[tId].rehab++;
@@ -1517,9 +1578,6 @@
       return stats;
     }
 
-    /**
-     * 取得某治療師在特定 (period, dayIdx) 的所有早務/晚務項目（合併復工、評估ICF、個人額外）
-     */
     function getPersonalSideTasks(therapistId, period, dayIdx) {
       const tasks = [];
       // 1. 復工
@@ -1531,20 +1589,21 @@
         if (state.rehab.pmSweep[dayIdx] === therapistId) tasks.push({ text: '掃', type: 'rehab' });
       }
 
-      // 2. 評估與 ICF
+      // 2. 評估與 ICF（不指定時不加括號）
       const evalKey = period === 'am' ? 'amEval' : 'pmEval';
       const icfKey = period === 'am' ? 'amIcf' : 'pmIcf';
-      state.evalIcf[evalKey][dayIdx].forEach(item => {
+      (state.evalIcf[evalKey][dayIdx] || []).forEach(item => {
         if (item.therapistId === therapistId) {
-          const cat = getEvalCategoryLabel(item);
+          const cat = getEvalCategory(item);
           const catStr = cat ? `(${cat})` : '';
-          tasks.push({ text: `評${catStr}${item.time ? ' ' + item.time : ''}`, type: 'eval', category: cat });
+          tasks.push({ text: `評${catStr}${item.time ? ' ' + item.time : ''}`, type: 'eval' });
         }
       });
-      state.evalIcf[icfKey][dayIdx].forEach(item => {
+      (state.evalIcf[icfKey][dayIdx] || []).forEach(item => {
         if (item.therapistId === therapistId) {
-          const catStr = getEvalCategory(item);
-          tasks.push({ text: `ICF(${catStr})${item.time ? ' ' + item.time : ''}`, type: 'icf' });
+          const cat = getEvalCategory(item);
+          const catStr = cat ? `(${cat})` : '';
+          tasks.push({ text: `ICF${catStr}${item.time ? ' ' + item.time : ''}`, type: 'icf' });
         }
       });
 
@@ -1558,9 +1617,6 @@
       return tasks;
     }
 
-    /**
-     * 取得某治療師在特定 (period, dayIdx) 的病房清單
-     */
     function getPersonalWardTasks(therapistId, period, dayIdx) {
       const list = [];
       state.wards.forEach(w => {
@@ -1581,8 +1637,18 @@
         .replace(/"/g, '&quot;');
     }
 
+    function formatCellShortText(cell) {
+      const names = cell.therapistIds.map(id => {
+        const t = getTherapist(id);
+        return t ? t.short : '';
+      }).filter(Boolean);
+      const parts = [...names, ...cell.tags];
+      if (cell.customNote) parts.push(cell.customNote);
+      return parts.join('/');
+    }
+
     // =========================================================================
-    // 4. 分頁切換與整體渲染 (Render All)
+    // 4. 分頁切換與整體渲染
     // =========================================================================
     function switchTab(tabName) {
       activeTab = tabName;
@@ -1601,14 +1667,12 @@
     }
 
     function renderAll() {
-      // 同步頂部期別下拉選單與鎖定狀態
       renderPeriodSelector();
       updateLockUI();
 
       const conflicts = detectConflicts();
       const conflictCount = Object.keys(conflicts).length;
 
-      // 更新 Tab 1 衝堂徽章
       const badge = document.getElementById('tabConflictBadge');
       if (conflictCount > 0) {
         badge.textContent = conflictCount;
@@ -1635,6 +1699,7 @@
         renderAnnouncementsPreview();
       } else if (activeTab === 'settings') {
         renderTherapistSettings();
+        renderWardSettings();
       }
     }
 
@@ -1652,10 +1717,9 @@
       const hint = document.getElementById('activeBrushHint');
       let html = '';
 
-      // 編輯/檢視模式按鈕
       const isEdit = activeBrush.mode === 'edit';
       html += `
-        <button onclick="setBrush('edit')"
+        <button type="button" onclick="setBrush('edit')"
           class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition flex items-center gap-1.5 ${isEdit ? 'bg-slate-800 text-white border-slate-800 brush-active' : 'bg-cream-50 text-slate-700 border-cream-300 hover:bg-cream-100'}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
           <span>編輯視窗模式</span>
@@ -1663,11 +1727,10 @@
         <div class="h-6 w-px bg-cream-200 mx-0.5"></div>
       `;
 
-      // 治療師畫筆按鈕
       state.therapists.forEach(t => {
         const active = activeBrush.mode === 'therapist' && activeBrush.value === t.id;
         html += `
-          <button onclick="setBrush('therapist', '${t.id}')"
+          <button type="button" onclick="setBrush('therapist', '${t.id}')"
             style="background-color: ${active ? t.color : t.bg}; color: ${active ? '#FFFFFF' : t.color}; border-color: ${t.border};"
             class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition flex items-center gap-1.5 ${active ? 'brush-active' : 'hover:opacity-90'}">
             <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-extrabold"
@@ -1679,12 +1742,11 @@
 
       html += `<div class="h-6 w-px bg-cream-200 mx-0.5"></div>`;
 
-      // 常用特殊標籤畫筆
       SPECIAL_TAGS.forEach(tag => {
         const active = activeBrush.mode === 'tag' && activeBrush.value === tag;
         const isWR = tag === 'WR';
         html += `
-          <button onclick="setBrush('tag', '${tag}')"
+          <button type="button" onclick="setBrush('tag', '${tag}')"
             class="px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition ${
               active
                 ? (isWR ? 'bg-sky-600 text-white border-sky-600 brush-active' : 'bg-morandi-warm text-white border-morandi-warm brush-active')
@@ -1695,10 +1757,9 @@
         `;
       });
 
-      // 橡皮擦
       const isEraser = activeBrush.mode === 'eraser';
       html += `
-        <button onclick="setBrush('eraser')"
+        <button type="button" onclick="setBrush('eraser')"
           class="px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition flex items-center gap-1 ${isEraser ? 'bg-morandi-red text-white border-morandi-red brush-active' : 'bg-white text-morandi-red border-red-200 hover:bg-morandi-redLight'}">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           <span>清除格</span>
@@ -1707,7 +1768,6 @@
 
       container.innerHTML = html;
 
-      // 更新提示文字
       if (activeBrush.mode === 'edit') {
         hint.textContent = '目前為「編輯視窗模式」：點擊任意病房格子可開啟詳細編輯視窗';
       } else if (activeBrush.mode === 'therapist') {
@@ -1746,7 +1806,7 @@
 
     function renderWardsGrid(conflicts) {
       const grid = document.getElementById('wardsGrid');
-      const html = state.wards.map((w, wIdx) => {
+      grid.innerHTML = state.wards.map((w, wIdx) => {
         const otOptions = state.therapists.map(t =>
           `<option value="${t.id}" ${w.otId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
         ).join('');
@@ -1754,7 +1814,6 @@
         const buildRow = (period, label) => {
           const cells = DAYS.map((_, dIdx) => {
             const cell = w.schedule[period][dIdx];
-            // 檢查此格是否有任何治療師衝堂
             const cellConflicts = [];
             cell.therapistIds.forEach(tId => {
               const cKey = `${tId}_${period}_${dIdx}`;
@@ -1844,8 +1903,6 @@
           </div>
         `;
       }).join('');
-
-      grid.innerHTML = html;
     }
 
     function updateWardMeta(wIdx, field, val) {
@@ -1878,11 +1935,8 @@
         if (idx >= 0) {
           cell.therapistIds.splice(idx, 1);
         } else {
-          if (multi) {
-            cell.therapistIds.push(tId);
-          } else {
-            cell.therapistIds = [tId];
-          }
+          if (multi) cell.therapistIds.push(tId);
+          else cell.therapistIds = [tId];
         }
       } else if (activeBrush.mode === 'tag') {
         const tag = activeBrush.value;
@@ -1895,9 +1949,6 @@
       renderAll();
     }
 
-    /**
-     * 病房格子進階編輯視窗
-     */
     function openWardCellModal(wIdx, period, dayIdx) {
       const ward = state.wards[wIdx];
       const cell = ward.schedule[period][dayIdx];
@@ -1945,9 +1996,9 @@
       `;
 
       const footerHtml = `
-        <button onclick="clearWardCellFromModal(${wIdx}, '${period}', ${dayIdx})" class="mr-auto px-3 py-1.5 text-xs font-semibold rounded-xl text-morandi-red hover:bg-morandi-redLight transition">清空此格</button>
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100 transition">取消</button>
-        <button onclick="saveWardCellFromModal(${wIdx}, '${period}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white transition">套用儲存</button>
+        <button type="button" onclick="clearWardCellFromModal(${wIdx}, '${period}', ${dayIdx})" class="mr-auto px-3 py-1.5 text-xs font-semibold rounded-xl text-morandi-red hover:bg-morandi-redLight transition">清空此格</button>
+        <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100 transition">取消</button>
+        <button type="button" onclick="saveWardCellFromModal(${wIdx}, '${period}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white transition">套用儲存</button>
       `;
 
       openModal(`${ward.name} — 週${DAYS[dayIdx]}${pLabel} 排班編輯`, bodyHtml, footerHtml);
@@ -1979,7 +2030,6 @@
       const stats = calculateStats();
       const grid = document.getElementById('statsGrid');
 
-      // 計算每人衝堂數
       const conflictPerT = {};
       Object.keys(conflicts).forEach(k => {
         const tId = k.split('_')[0];
@@ -2137,8 +2187,8 @@
       `;
 
       const footerHtml = `
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-        <button onclick="savePersonalExtraModal('${therapistId}', '${period}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存</button>
+        <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button type="button" onclick="savePersonalExtraModal('${therapistId}', '${period}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存</button>
       `;
 
       openModal(`${t.name} — 週${DAYS[dayIdx]} ${pLabel} 額外業務`, bodyHtml, footerHtml);
@@ -2155,7 +2205,7 @@
     }
 
     /**
-     * 評估與 ICF 總表渲染與編輯
+     * 評估與 ICF 總表渲染與編輯（三選項：不指定 / 兒童 / 成人）
      */
     function renderEvalIcfTable() {
       const table = document.getElementById('evalIcfTable');
@@ -2184,9 +2234,12 @@
             const t = getTherapist(it.therapistId);
             const tName = t ? t.short : '?';
             const cat = getEvalCategory(it);
-            const catBadge = cat === '兒童'
-              ? `<span class="px-1 rounded bg-pink-100 text-pink-800 text-[10px] font-bold">兒童</span>`
-              : `<span class="px-1 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">${escapeHtml(cat)}</span>`;
+            let catBadge = '';
+            if (cat === '兒童') {
+              catBadge = `<span class="px-1 rounded bg-pink-100 text-pink-800 text-[10px] font-bold">兒童</span>`;
+            } else if (cat === '成人') {
+              catBadge = `<span class="px-1 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">成人</span>`;
+            }
             return `<div class="px-1.5 py-0.5 rounded-md border text-[11px] font-semibold leading-tight flex items-center gap-1 ${r.badgeCls}">
               <span>${escapeHtml(tName)}</span>${catBadge}<span>${escapeHtml(it.time)}</span>
             </div>`;
@@ -2209,7 +2262,7 @@
 
     let tempEvalItems = [];
     function openEvalIcfModal(rowKey, rowLabel, dayIdx) {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       tempEvalItems = JSON.parse(JSON.stringify(state.evalIcf[rowKey][dayIdx] || []));
       renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
     }
@@ -2220,16 +2273,23 @@
         : tempEvalItems.map((it, idx) => {
             const t = getTherapist(it.therapistId);
             const cat = getEvalCategory(it);
-            const catCls = cat === '兒童' ? 'bg-pink-100 text-pink-800' : 'bg-blue-100 text-blue-800';
+            let catBadge = '';
+            if (cat === '兒童') {
+              catBadge = `<span class="px-1.5 py-0.5 text-xs rounded font-bold bg-pink-100 text-pink-800">兒童</span>`;
+            } else if (cat === '成人') {
+              catBadge = `<span class="px-1.5 py-0.5 text-xs rounded font-bold bg-blue-100 text-blue-800">成人</span>`;
+            } else {
+              catBadge = `<span class="px-1.5 py-0.5 text-xs rounded font-medium bg-slate-100 text-slate-500">不指定</span>`;
+            }
             return `
               <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-cream-50 border border-cream-200">
                 <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
                   <span class="w-6 h-6 rounded-full text-xs text-white flex items-center justify-center" style="background-color:${t ? t.color : '#888'}">${t ? escapeHtml(t.short) : '?'}</span>
                   <span>${t ? escapeHtml(t.name) : '未知'}</span>
-                  <span class="px-1.5 py-0.5 text-xs rounded font-bold ${catCls}">${escapeHtml(cat)}</span>
+                  ${catBadge}
                   <span class="text-slate-600">${escapeHtml(it.time)}</span>
                 </div>
-                <button onclick="removeTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx}, ${idx})" class="text-xs text-morandi-red hover:underline font-medium">移除</button>
+                <button type="button" onclick="removeTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx}, ${idx})" class="text-xs text-morandi-red hover:underline font-medium">移除</button>
               </div>
             `;
           }).join('');
@@ -2252,10 +2312,11 @@
               <select id="evalTherapistSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">${tOptions}</select>
             </div>
             <div>
-              <label class="block text-[11px] text-slate-500 mb-1">類別（成人 / 兒童）</label>
+              <label class="block text-[11px] text-slate-500 mb-1">類別</label>
               <select id="evalCategorySelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl font-semibold">
-                <option value="成人" selected>成人</option>
+                <option value="" selected>不指定</option>
                 <option value="兒童">兒童</option>
+                <option value="成人">成人</option>
               </select>
             </div>
           </div>
@@ -2273,8 +2334,8 @@
       `;
 
       const footerHtml = `
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-        <button onclick="saveEvalIcfModal('${rowKey}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存變更</button>
+        <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button type="button" onclick="saveEvalIcfModal('${rowKey}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存變更</button>
       `;
 
       openModal(`${rowLabel} — 週${DAYS[dayIdx]}`, bodyHtml, footerHtml);
@@ -2282,7 +2343,7 @@
 
     function addTempEvalItem(rowKey, rowLabel, dayIdx) {
       const therapistId = document.getElementById('evalTherapistSelect').value;
-      const category = document.getElementById('evalCategorySelect').value || '成人';
+      const category = document.getElementById('evalCategorySelect').value || '';
       const time = document.getElementById('evalTimeInput').value.trim();
       if (!therapistId) return;
       tempEvalItems.push({ therapistId, category, time });
@@ -2301,9 +2362,6 @@
       renderAll();
     }
 
-    /**
-     * 復健工作 (復工) 總表渲染與互動
-     */
     function renderRehabTable() {
       const table = document.getElementById('rehabTable');
       const rows = [
@@ -2445,9 +2503,9 @@
     }
 
     /**
-     * 產生單一病房公告格子的 HTML（供網頁預覽與 Word 匯出共用結構）
+     * 產生單一病房公告格子的 HTML（支援網頁預覽與 Word/列印版面微調字體）
      */
-    function buildAnnouncementCellInnerHTML(cell, periods, forWord = false) {
+    function buildAnnouncementCellInnerHTML(cell, periods, forOutput = false, fontPreset = FONT_PRESET_MAP.standard) {
       const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
       const hasWR = cell.tags.includes('WR');
       const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
@@ -2456,41 +2514,38 @@
         return '&nbsp;';
       }
 
-      // 若無治療師，僅顯示標籤與備註（如 WR、衛教時間）
       if (therapists.length === 0) {
         const parts = [...cell.tags];
         if (cell.customNote) parts.push(cell.customNote);
-        return `<div style="font-weight:bold; font-size:${forWord ? '13pt' : '14px'};">${escapeHtml(parts.join(' / '))}</div>`;
+        return `<div style="font-weight:bold; font-size:${forOutput ? fontPreset.tagPt + 'pt' : '14px'};">${escapeHtml(parts.join(' / '))}</div>`;
       }
 
-      // 若有固定特殊活動（如 烹飪、購物、外出、衛教時間）
       if (nonRotTags.length > 0) {
         const names = therapists.map(t => escapeHtml(t.name)).join('、');
         const tagLine = nonRotTags.join('、') + (hasWR ? ' / WR' : '');
-        const noteLine = cell.customNote ? `<div style="font-size:${forWord ? '10pt' : '11px'}; color:#4B5563;">${escapeHtml(cell.customNote)}</div>` : '';
+        const noteLine = cell.customNote ? `<div style="font-size:${forOutput ? fontPreset.rotPt + 'pt' : '11px'}; color:#4B5563;">${escapeHtml(cell.customNote)}</div>` : '';
         return `
-          <div style="font-weight:bold; font-size:${forWord ? '12pt' : '13px'}; margin-bottom:2px;">${names}</div>
-          <div style="font-weight:bold; font-size:${forWord ? '12pt' : '13px'}; color:${forWord ? '#000' : '#B45309'};">${escapeHtml(tagLine)}</div>
+          <div style="font-weight:bold; font-size:${forOutput ? fontPreset.namePt + 'pt' : '13px'}; margin-bottom:2px;">${names}</div>
+          <div style="font-weight:bold; font-size:${forOutput ? fontPreset.tagPt + 'pt' : '13px'}; color:${forOutput ? '#000' : '#B45309'};">${escapeHtml(tagLine)}</div>
           ${noteLine}
         `;
       }
 
-      // 一般治療師排班 -> 顯示全名 + 三期輪替小表
       const blocks = therapists.map(t => {
         const rot = getTherapistRotation(t);
-        if (forWord) {
+        if (forOutput) {
           return `
-            <div style="font-weight:bold; font-size:12pt; margin-bottom:3px;">${escapeHtml(t.name)}${hasWR ? ' (WR)' : ''}</div>
-            <table style="width:100%; border-collapse:collapse; margin-top:2px; font-size:9.5pt;">
+            <div style="font-weight:bold; font-size:${fontPreset.namePt}pt; margin-bottom:3px;">${escapeHtml(t.name)}${hasWR ? ' (WR)' : ''}</div>
+            <table style="width:100%; border-collapse:collapse; margin-top:2px; font-size:${fontPreset.rotPt}pt;">
               <tr>
-                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6;">${periods.cols[0]}</td>
-                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6;">${periods.cols[1]}</td>
-                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6;">${periods.cols[2]}</td>
+                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6; height:auto;">${periods.cols[0]}</td>
+                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6; height:auto;">${periods.cols[1]}</td>
+                <td style="border:1px solid #000; padding:2px; text-align:center; background:#F3F4F6; height:auto;">${periods.cols[2]}</td>
               </tr>
               <tr>
-                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold;">${escapeHtml(rot[0])}</td>
-                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold;">${escapeHtml(rot[1])}</td>
-                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold;">${escapeHtml(rot[2])}</td>
+                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold; height:auto;">${escapeHtml(rot[0])}</td>
+                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold; height:auto;">${escapeHtml(rot[1])}</td>
+                <td style="border:1px solid #000; padding:3px 2px; text-align:center; font-weight:bold; height:auto;">${escapeHtml(rot[2])}</td>
               </tr>
             </table>
           `;
@@ -2514,7 +2569,7 @@
       }).join('<div style="height:4px;"></div>');
 
       const noteLine = cell.customNote
-        ? `<div style="font-size:${forWord ? '9.5pt' : '11px'}; margin-top:2px; color:#4B5563;">${escapeHtml(cell.customNote)}</div>`
+        ? `<div style="font-size:${forOutput ? fontPreset.rotPt + 'pt' : '11px'}; margin-top:2px; color:#4B5563;">${escapeHtml(cell.customNote)}</div>`
         : '';
 
       return blocks + noteLine;
@@ -2551,12 +2606,12 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button onclick="printSingleWard('${w.id}')"
+                  <button type="button" onclick="printSingleWard('${w.id}')"
                     class="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-cream-100 hover:bg-cream-200 text-slate-800 border border-cream-300 transition flex items-center gap-1">
                     <svg class="w-3.5 h-3.5 text-morandi-teal" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     <span>單獨列印此病房</span>
                   </button>
-                  <button onclick="exportSingleWardWord('${w.id}')"
+                  <button type="button" onclick="exportSingleWardWord('${w.id}')"
                     class="px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-morandi-tealLight hover:bg-morandi-teal hover:text-white text-morandi-tealDark border border-morandi-teal/30 transition flex items-center gap-1">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     <span>下載此病房 Word</span>
@@ -2582,615 +2637,7 @@
     }
 
     // =========================================================================
-    // 10. 輸出與列印設定彈窗 (Selective Print / Word / Excel)
-    // =========================================================================
-    function formatCellShortText(cell) {
-      const names = cell.therapistIds.map(id => {
-        const t = getTherapist(id);
-        return t ? t.short : '';
-      }).filter(Boolean);
-      const parts = [...names, ...cell.tags];
-      if (cell.customNote) parts.push(cell.customNote);
-      return parts.join('/');
-    }
-
-    /**
-     * 開啟「一鍵輸出 / 選擇病房列印」彈窗
-     */
-    function openExportModal() {
-      const wardCheckboxes = state.wards.map(w => {
-        const ot = getTherapist(w.otId);
-        return `
-          <label class="flex items-center justify-between p-2.5 rounded-xl border border-cream-200 bg-white hover:bg-morandi-tealLight/40 cursor-pointer transition">
-            <div class="flex items-center gap-2.5">
-              <input type="checkbox" name="exportWard" value="${w.id}" checked onchange="updateExportCount()"
-                class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
-              <span class="px-2 py-0.5 rounded-md bg-morandi-tealLight text-morandi-tealDark text-xs font-extrabold">${escapeHtml(w.name)}</span>
-              <span class="text-sm font-semibold text-slate-800">${escapeHtml(w.name.replace('W', ''))}病房活動時間表</span>
-            </div>
-            <span class="text-xs text-slate-500">負責OT：${ot ? escapeHtml(ot.name) : '未指派'}</span>
-          </label>
-        `;
-      }).join('');
-
-      const bodyHtml = `
-        <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-cream-200">
-          <div class="flex flex-wrap items-center gap-1.5">
-            <button type="button" onclick="selectExportPreset('all')"
-              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-cream-100 hover:bg-cream-200 text-slate-700 border border-cream-300 transition">全選</button>
-            <button type="button" onclick="selectExportPreset('wardsOnly')"
-              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-morandi-tealLight hover:bg-morandi-teal/20 text-morandi-tealDark border border-morandi-teal/30 transition">僅選全部病房公告表</button>
-            <button type="button" onclick="selectExportPreset('none')"
-              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white hover:bg-cream-100 text-slate-500 border border-cream-300 transition">全不選</button>
-          </div>
-          <span id="exportSelectedCount" class="text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-teal text-white">已勾選 ${state.wards.length} 項</span>
-        </div>
-
-        <div class="space-y-2">
-          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">總表與個人課表</p>
-          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-cream-200 bg-cream-50/60 hover:bg-cream-100/70 cursor-pointer transition">
-            <input id="exportWardSummary" type="checkbox" onchange="updateExportCount()"
-              class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
-            <div>
-              <div class="text-sm font-semibold text-slate-800">各病房活動總覽表（8W~12W 橫向總表）</div>
-              <div class="text-[11px] text-slate-500">彙整所有病房週一至週五上下午排程與 WR 時間</div>
-            </div>
-          </label>
-          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-cream-200 bg-cream-50/60 hover:bg-cream-100/70 cursor-pointer transition">
-            <input id="exportPersonalSummary" type="checkbox" onchange="updateExportCount()"
-              class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
-            <div>
-              <div class="text-sm font-semibold text-slate-800">個人活動時間表（含評估 / ICF / 復工表）</div>
-              <div class="text-[11px] text-slate-500">包含每位治療師個人課表、評估 ICF 與復健工作總表</div>
-            </div>
-          </label>
-        </div>
-
-        <div class="space-y-2">
-          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">各病房獨立公告表（每病房自動獨立分頁）</p>
-          <div class="space-y-1.5">
-            ${wardCheckboxes}
-          </div>
-        </div>
-      `;
-
-      const footerHtml = `
-        <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
-          <button onclick="executeSelectedPrint()"
-            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-slate-800 hover:bg-slate-900 text-white shadow-sm transition flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-            <span>直接列印 (A4 橫式)</span>
-          </button>
-          <button onclick="executeSelectedWord()"
-            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <span>匯出 Word (.doc)</span>
-          </button>
-          <button onclick="executeSelectedExcel()"
-            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <span>匯出 Excel (.xlsx)</span>
-          </button>
-        </div>
-      `;
-
-      openModal('輸出與列印設定（自由選擇病房）', bodyHtml, footerHtml);
-      updateExportCount();
-    }
-
-    function selectExportPreset(preset) {
-      const wardSummaryEl = document.getElementById('exportWardSummary');
-      const personalSummaryEl = document.getElementById('exportPersonalSummary');
-      const wardEls = document.querySelectorAll('input[name="exportWard"]');
-
-      if (preset === 'all') {
-        wardSummaryEl.checked = true;
-        personalSummaryEl.checked = true;
-        wardEls.forEach(el => el.checked = true);
-      } else if (preset === 'wardsOnly') {
-        wardSummaryEl.checked = false;
-        personalSummaryEl.checked = false;
-        wardEls.forEach(el => el.checked = true);
-      } else if (preset === 'none') {
-        wardSummaryEl.checked = false;
-        personalSummaryEl.checked = false;
-        wardEls.forEach(el => el.checked = false);
-      }
-      updateExportCount();
-    }
-
-    function getExportSelection() {
-      const includeWardSummary = document.getElementById('exportWardSummary')?.checked || false;
-      const includePersonalSummary = document.getElementById('exportPersonalSummary')?.checked || false;
-      const wardIds = Array.from(document.querySelectorAll('input[name="exportWard"]:checked')).map(el => el.value);
-      const totalCount = (includeWardSummary ? 1 : 0) + (includePersonalSummary ? 1 : 0) + wardIds.length;
-      return { includeWardSummary, includePersonalSummary, wardIds, totalCount };
-    }
-
-    function updateExportCount() {
-      const badge = document.getElementById('exportSelectedCount');
-      if (!badge) return;
-      const { totalCount } = getExportSelection();
-      badge.textContent = `已勾選 ${totalCount} 項`;
-      badge.className = totalCount > 0
-        ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-teal text-white'
-        : 'text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-red text-white';
-    }
-
-    function buildExportFilename(selection, ext) {
-      const halfText = state.half === 'H1' ? '上半年' : '下半年';
-      const scopeParts = [];
-
-      if (selection.includeWardSummary || selection.includePersonalSummary) {
-        if (selection.includeWardSummary && selection.includePersonalSummary) scopeParts.push('總表與個人表');
-        else if (selection.includeWardSummary) scopeParts.push('病房總表');
-        else scopeParts.push('個人課表');
-      }
-
-      if (selection.wardIds.length === state.wards.length && state.wards.length > 0) {
-        if (scopeParts.length === 0) scopeParts.push('全病房');
-        else scopeParts.push('全病房公告');
-      } else if (selection.wardIds.length > 0) {
-        scopeParts.push(selection.wardIds.join('_'));
-      }
-
-      const scopeStr = scopeParts.length > 0 ? scopeParts.join('_') : '病房';
-      return `${state.year}年${halfText}_${scopeStr}活動時間表.${ext}`;
-    }
-
-    // =========================================================================
-    // 11. 模組化 HTML 建構器（供直接列印與 Word 匯出共用）
-    // =========================================================================
-    function buildWardSummaryBlockHtml(tableClass = 'summary-table') {
-      const periods = getPeriods();
-      const tablesHtml = state.wards.map(w => {
-        const ot = getTherapist(w.otId);
-        return `
-          <table class="${tableClass}" style="margin-bottom:8px;">
-            <tr>
-              <th style="width:12%; background:#E8F1F1;">${escapeHtml(w.name)}</th>
-              <th style="width:14%; background:#F3F4F6;">一</th>
-              <th style="width:14%; background:#F3F4F6;">二</th>
-              <th style="width:14%; background:#F3F4F6;">三</th>
-              <th style="width:14%; background:#F3F4F6;">四</th>
-              <th style="width:14%; background:#F3F4F6;">五</th>
-              <th style="width:18%; background:#F9FAFB;">負責OT / WR</th>
-            </tr>
-            <tr>
-              <td style="font-weight:bold; background:#F9FAFB;">上午</td>
-              ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.am[d])) || '&nbsp;'}</td>`).join('')}
-              <td rowspan="2" style="font-size:9.5pt;"><b>${ot ? escapeHtml(ot.name) : ''}</b><br/>${escapeHtml(w.wrTime || '')}</td>
-            </tr>
-            <tr>
-              <td style="font-weight:bold; background:#F9FAFB;">下午</td>
-              ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.pm[d])) || '&nbsp;'}</td>`).join('')}
-            </tr>
-          </table>
-        `;
-      }).join('');
-
-      return `
-        <h2 style="font-size:14pt; font-weight:bold; text-align:center; margin:0 0 8px 0;">
-          ${state.year}年${periods.label} 精神科病房職能治療活動時間總表
-        </h2>
-        ${tablesHtml}
-      `;
-    }
-
-    function buildPersonalSummaryBlockHtml(tableClass = 'summary-table') {
-      const periods = getPeriods();
-      const personalHtml = state.therapists.map(t => `
-        <table class="${tableClass}" style="margin-bottom:6px;">
-          <tr>
-            <th style="width:14%; background:#E8F1F1;">${escapeHtml(t.name)} (${escapeHtml(t.short)})</th>
-            <th style="width:17.2%; background:#F3F4F6;">一</th>
-            <th style="width:17.2%; background:#F3F4F6;">二</th>
-            <th style="width:17.2%; background:#F3F4F6;">三</th>
-            <th style="width:17.2%; background:#F3F4F6;">四</th>
-            <th style="width:17.2%; background:#F3F4F6;">五</th>
-          </tr>
-          <tr>
-            <td style="background:#FAFAFA; font-size:9pt;">早務</td>
-            ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
-          </tr>
-          <tr>
-            <td style="font-weight:bold;">上午</td>
-            ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'am', d).join('/')) || '&nbsp;'}</td>`).join('')}
-          </tr>
-          <tr>
-            <td style="font-weight:bold;">下午</td>
-            ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'pm', d).join('/')) || '&nbsp;'}</td>`).join('')}
-          </tr>
-          <tr>
-            <td style="background:#FAFAFA; font-size:9pt;">晚務</td>
-            ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
-          </tr>
-        </table>
-      `).join('');
-
-      const evalRowsHtml = [
-        ['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']
-      ].map(([label, key]) => `
-        <tr>
-          <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
-          ${DAYS.map((_, d) => {
-            const txt = (state.evalIcf[key][d] || []).map(it => {
-              const t = getTherapist(it.therapistId);
-              const cat = getEvalCategoryLabel(it);
-              const catStr = cat ? `(${cat})` : '';
-              return `${t ? t.short : ''}${catStr}${it.time ? ' ' + it.time : ''}`;
-            }).join(' / ');
-            return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
-          }).join('')}
-        </tr>
-      `).join('');
-
-      const rehabRowsHtml = [
-        ['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']
-      ].map(([label, key]) => `
-        <tr>
-          <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
-          ${DAYS.map((_, d) => {
-            const t = getTherapist(state.rehab[key][d]);
-            return `<td>${t ? escapeHtml(t.short) : '&nbsp;'}</td>`;
-          }).join('')}
-        </tr>
-      `).join('');
-
-      return `
-        <h2 style="font-size:14pt; font-weight:bold; text-align:center; margin:0 0 8px 0;">
-          ${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作總表
-        </h2>
-        ${personalHtml}
-        <h3 style="font-size:11pt; font-weight:bold; margin:8px 0 4px 0;">評估與 ICF 總表</h3>
-        <table class="${tableClass}" style="margin-bottom:6px;">
-          <tr>
-            <th style="width:14%; background:#F3F4F6;">類別</th>
-            <th style="width:17.2%; background:#F3F4F6;">一</th>
-            <th style="width:17.2%; background:#F3F4F6;">二</th>
-            <th style="width:17.2%; background:#F3F4F6;">三</th>
-            <th style="width:17.2%; background:#F3F4F6;">四</th>
-            <th style="width:17.2%; background:#F3F4F6;">五</th>
-          </tr>
-          ${evalRowsHtml}
-        </table>
-        <h3 style="font-size:11pt; font-weight:bold; margin:8px 0 4px 0;">復健工作（復工）總表</h3>
-        <table class="${tableClass}" style="margin-bottom:6px;">
-          <tr>
-            <th style="width:14%; background:#F3F4F6;">項目</th>
-            <th style="width:17.2%; background:#F3F4F6;">一</th>
-            <th style="width:17.2%; background:#F3F4F6;">二</th>
-            <th style="width:17.2%; background:#F3F4F6;">三</th>
-            <th style="width:17.2%; background:#F3F4F6;">四</th>
-            <th style="width:17.2%; background:#F3F4F6;">五</th>
-          </tr>
-          ${rehabRowsHtml}
-        </table>
-        <p style="font-size:9.5pt; margin-top:6px;">
-          <b>活動輪替順序：</b>${escapeHtml(state.activities.join(' → '))}　｜　
-          <b>紀錄二次順序：</b>${escapeHtml(state.recordOrder)}（本期：${escapeHtml(state.recordCurrent)}）　｜　
-          ${escapeHtml(state.footerNote)}
-        </p>
-      `;
-    }
-
-    function buildSingleWardAnnouncementHtml(w, tableClass = 'announce-word-table') {
-      const periods = getPeriods();
-      const ot = getTherapist(w.otId);
-      const wardNum = w.name.replace('W', '');
-
-      return `
-        <div style="text-align:center; margin-bottom:12px;">
-          <span style="font-size:20pt; font-weight:bold; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
-            ${state.year}年${periods.label} ${escapeHtml(wardNum)}病房活動時間表
-          </span>
-          <span style="font-size:14pt; font-weight:bold; margin-left:24px; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
-            負責OT：${ot ? escapeHtml(ot.name) : ''}
-          </span>
-        </div>
-        <table class="${tableClass}">
-          <tr>
-            <th style="width:10%; background:#F3F4F6;">時間</th>
-            <th style="width:18%; background:#F3F4F6;">星期一</th>
-            <th style="width:18%; background:#F3F4F6;">星期二</th>
-            <th style="width:18%; background:#F3F4F6;">星期三</th>
-            <th style="width:18%; background:#F3F4F6;">星期四</th>
-            <th style="width:18%; background:#F3F4F6;">星期五</th>
-          </tr>
-          <tr>
-            <td style="font-weight:bold; font-size:14pt; background:#F9FAFB; height:175px;">上午<br/>活動</td>
-            ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.am[d], periods, true)}</td>`).join('')}
-          </tr>
-          <tr>
-            <td style="font-weight:bold; font-size:14pt; background:#F9FAFB; height:175px;">下午<br/>活動</td>
-            ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.pm[d], periods, true)}</td>`).join('')}
-          </tr>
-        </table>
-      `;
-    }
-
-    // =========================================================================
-    // 12. 執行輸出：直接列印 / Word (.doc) / Excel (.xlsx) / 單一病房快捷
-    // =========================================================================
-    function runPrintWithSelection(selection) {
-      if (selection.totalCount === 0) {
-        showToast('請至少勾選一項要列印的內容', 'error');
-        return;
-      }
-
-      const pages = [];
-      if (selection.includeWardSummary) {
-        pages.push(`<div class="print-page">${buildWardSummaryBlockHtml('print-summary-table')}</div>`);
-      }
-      if (selection.includePersonalSummary) {
-        pages.push(`<div class="print-page">${buildPersonalSummaryBlockHtml('print-summary-table')}</div>`);
-      }
-      selection.wardIds.forEach(wId => {
-        const w = state.wards.find(item => item.id === wId);
-        if (w) {
-          pages.push(`<div class="print-page">${buildSingleWardAnnouncementHtml(w, 'print-announce-table')}</div>`);
-        }
-      });
-
-      const printEl = document.getElementById('printContainer');
-      printEl.innerHTML = pages.join('');
-      closeModal();
-      setTimeout(() => {
-        window.print();
-      }, 120);
-    }
-
-    function executeSelectedPrint() {
-      runPrintWithSelection(getExportSelection());
-    }
-
-    function printSingleWard(wardId) {
-      runPrintWithSelection({
-        includeWardSummary: false,
-        includePersonalSummary: false,
-        wardIds: [wardId],
-        totalCount: 1
-      });
-    }
-
-    function runWordExportWithSelection(selection) {
-      if (selection.totalCount === 0) {
-        showToast('請至少勾選一項要匯出的內容', 'error');
-        return;
-      }
-
-      try {
-        const periods = getPeriods();
-        const sections = [];
-
-        if (selection.includeWardSummary) {
-          sections.push(buildWardSummaryBlockHtml('summary-table'));
-        }
-        if (selection.includePersonalSummary) {
-          sections.push(buildPersonalSummaryBlockHtml('summary-table'));
-        }
-        selection.wardIds.forEach(wId => {
-          const w = state.wards.find(item => item.id === wId);
-          if (w) {
-            sections.push(buildSingleWardAnnouncementHtml(w, 'announce-word-table'));
-          }
-        });
-
-        const joinedBody = sections.join('<br clear="all" style="page-break-before:always;" />');
-
-        const docHtml = `
-          <html xmlns:o="urn:schemas-microsoft-com:office:office"
-                xmlns:w="urn:schemas-microsoft-com:office:word"
-                xmlns="http://www.w3.org/TR/REC-html40">
-          <head>
-            <meta charset="utf-8" />
-            <title>${state.year}年${periods.label}病房活動時間表</title>
-            <style>
-              @page Section1 {
-                size: 29.7cm 21.0cm;
-                mso-page-orientation: landscape;
-                margin: 1.2cm 1.2cm 1.2cm 1.2cm;
-              }
-              div.Section1 { page: Section1; }
-              body {
-                font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
-                color: #000000;
-              }
-              table.summary-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 10pt;
-              }
-              table.summary-table th, table.summary-table td {
-                border: 1px solid #000000;
-                padding: 3px 4px;
-                text-align: center;
-                vertical-align: middle;
-              }
-              table.announce-word-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-family: "標楷體", "DFKai-SB", "Microsoft JhengHei", sans-serif;
-                font-size: 12pt;
-              }
-              table.announce-word-table th, table.announce-word-table td {
-                border: 1.5px solid #000000;
-                text-align: center;
-                vertical-align: middle;
-              }
-              table.announce-word-table th {
-                padding: 8px 4px;
-                font-size: 13.5pt;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="Section1">
-              ${joinedBody}
-            </div>
-          </body>
-          </html>
-        `;
-
-        const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const filename = buildExportFilename(selection, 'doc');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-        closeModal();
-        showToast(`已成功匯出 Word：${filename}`, 'success');
-      } catch (err) {
-        console.error(err);
-        showToast('匯出 Word 時發生錯誤', 'error');
-      }
-    }
-
-    function executeSelectedWord() {
-      runWordExportWithSelection(getExportSelection());
-    }
-
-    function exportSingleWardWord(wardId) {
-      runWordExportWithSelection({
-        includeWardSummary: false,
-        includePersonalSummary: false,
-        wardIds: [wardId],
-        totalCount: 1
-      });
-    }
-
-    function executeSelectedExcel() {
-      const selection = getExportSelection();
-      if (selection.totalCount === 0) {
-        showToast('請至少勾選一項要匯出的內容', 'error');
-        return;
-      }
-      if (typeof XLSX === 'undefined') {
-        showToast('Excel 元件尚未載入完成，請稍候再試', 'error');
-        return;
-      }
-
-      try {
-        const periods = getPeriods();
-        const wb = XLSX.utils.book_new();
-
-        // 1. 各病房活動總覽表
-        if (selection.includeWardSummary) {
-          const sheet1Data = [
-            [`${state.year}年${periods.label} 精神科病房活動時間總表`],
-            []
-          ];
-          state.wards.forEach(w => {
-            const ot = getTherapist(w.otId);
-            sheet1Data.push([`${w.name}`, '一', '二', '三', '四', '五', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
-            sheet1Data.push(['上午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.am[d]))]);
-            sheet1Data.push(['下午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.pm[d]))]);
-            sheet1Data.push([]);
-          });
-          const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-          ws1['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 15 }];
-          XLSX.utils.book_append_sheet(wb, ws1, '各病房活動總覽');
-        }
-
-        // 2. 個人活動時間表
-        if (selection.includePersonalSummary) {
-          const sheet2Data = [
-            [`${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作`],
-            []
-          ];
-          state.therapists.forEach(t => {
-            sheet2Data.push([`${t.name} (${t.short})`, '一', '二', '三', '四', '五']);
-            sheet2Data.push(['早務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' '))]);
-            sheet2Data.push(['上午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'am', d).join('/'))]);
-            sheet2Data.push(['下午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'pm', d).join('/'))]);
-            sheet2Data.push(['晚務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' '))]);
-            sheet2Data.push([]);
-          });
-
-          sheet2Data.push(['評估與ICF總表', '一', '二', '三', '四', '五']);
-          [['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']].forEach(([label, key]) => {
-            sheet2Data.push([
-              label,
-              ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
-                const t = getTherapist(it.therapistId);
-                const cat = getEvalCategoryLabel(it);
-                const catStr = cat ? `(${cat})` : '';
-                return `${t ? t.short : ''}${catStr}${it.time ? ' ' + it.time : ''}`;
-              }).join(' / '))
-            ]);
-          });
-          sheet2Data.push([]);
-
-          sheet2Data.push(['復健工作總表', '一', '二', '三', '四', '五']);
-          [['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']].forEach(([label, key]) => {
-            sheet2Data.push([
-              label,
-              ...DAYS.map((_, d) => {
-                const t = getTherapist(state.rehab[key][d]);
-                return t ? t.short : '';
-              })
-            ]);
-          });
-          sheet2Data.push([]);
-          sheet2Data.push(['活動輪替順序', state.activities.join(' → ')]);
-          sheet2Data.push(['紀錄二次順序', state.recordOrder || '']);
-          sheet2Data.push(['本期二次紀錄', state.recordCurrent || '']);
-          sheet2Data.push(['備註', state.footerNote || '']);
-
-          const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-          ws2['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
-          XLSX.utils.book_append_sheet(wb, ws2, '個人活動時間表');
-        }
-
-        // 3. 各勾選病房的獨立工作表（含三期輪替）
-        const formatAnnouncementPlain = (cell) => {
-          const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
-          const hasWR = cell.tags.includes('WR');
-          const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
-
-          if (therapists.length === 0) {
-            return [...cell.tags, cell.customNote].filter(Boolean).join(' / ');
-          }
-          if (nonRotTags.length > 0) {
-            const names = therapists.map(t => t.name).join('、');
-            return `${names}\n${nonRotTags.join('、')}${hasWR ? '/WR' : ''}${cell.customNote ? '\n' + cell.customNote : ''}`;
-          }
-          return therapists.map(t => {
-            const rot = getTherapistRotation(t);
-            return `${t.name}${hasWR ? '(WR)' : ''}\n${periods.cols[0]}:${rot[0]} | ${periods.cols[1]}:${rot[1]} | ${periods.cols[2]}:${rot[2]}`;
-          }).join('\n') + (cell.customNote ? `\n${cell.customNote}` : '');
-        };
-
-        selection.wardIds.forEach(wId => {
-          const w = state.wards.find(item => item.id === wId);
-          if (!w) return;
-          const ot = getTherapist(w.otId);
-          const wardNum = w.name.replace('W', '');
-          const wardData = [
-            [`${state.year}年${periods.label} ${wardNum}病房活動時間表`, '', '', '', `負責OT：${ot ? ot.name : ''}`, w.wrTime || ''],
-            ['時間', '星期一', '星期二', '星期三', '星期四', '星期五'],
-            ['上午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.am[d]))],
-            ['下午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.pm[d]))]
-          ];
-          const wsWard = XLSX.utils.aoa_to_sheet(wardData);
-          wsWard['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }];
-          XLSX.utils.book_append_sheet(wb, wsWard, `${w.name}公告表`);
-        });
-
-        const filename = buildExportFilename(selection, 'xlsx');
-        XLSX.writeFile(wb, filename);
-        closeModal();
-        showToast(`已成功匯出 Excel：${filename}`, 'success');
-      } catch (err) {
-        console.error(err);
-        showToast('匯出 Excel 時發生錯誤', 'error');
-      }
-    }
-
-    // =========================================================================
-    // 13. 共用 Modal 與 Toast 系統（不使用 alert/confirm）
+    // 8. TAB 4 渲染與互動：人員與病房基本設定
     // =========================================================================
     function renderTherapistSettings() {
       const container = document.getElementById('therapistSettingsList');
@@ -3210,7 +2657,7 @@
                 <span class="w-8 h-8 rounded-full text-sm font-bold text-white flex items-center justify-center shadow-sm" style="background-color:${t.color}">${escapeHtml(t.short)}</span>
                 <span class="font-bold text-slate-800">${escapeHtml(t.name)}</span>
               </div>
-              <button onclick="confirmDeleteTherapist(${idx})" class="text-xs text-morandi-red hover:underline font-medium">刪除</button>
+              <button type="button" onclick="confirmDeleteTherapist(${idx})" class="text-xs text-morandi-red hover:underline font-medium">刪除</button>
             </div>
 
             <div class="grid grid-cols-3 gap-2">
@@ -3229,6 +2676,40 @@
             <div>
               <label class="block text-[11px] font-semibold text-slate-500 mb-1.5">代表色</label>
               <div class="flex flex-wrap gap-1.5">${swatches}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderWardSettings() {
+      const container = document.getElementById('wardSettingsList');
+      if (!container) return;
+
+      container.innerHTML = state.wards.map((w, wIdx) => {
+        const otOptions = state.therapists.map(t =>
+          `<option value="${t.id}" ${w.otId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`
+        ).join('');
+
+        return `
+          <div class="rounded-2xl border border-cream-200 p-4 bg-cream-50/50 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-lg bg-morandi-teal text-white font-extrabold text-sm">${escapeHtml(w.name)}</span>
+              <span class="text-xs text-slate-500">病房基本資料</span>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 mb-1">負責職能治療師</label>
+              <select onchange="updateWardMeta(${wIdx}, 'otId', this.value)"
+                class="w-full px-2.5 py-1.5 text-sm font-semibold bg-white border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal">
+                <option value="">未指派</option>
+                ${otOptions}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 mb-1">WR 時間</label>
+              <input type="text" value="${escapeHtml(w.wrTime)}" onchange="updateWardMeta(${wIdx}, 'wrTime', this.value)"
+                class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+                placeholder="例如：WR-14:15" />
             </div>
           </div>
         `;
@@ -3288,7 +2769,6 @@
         () => {
           const delId = t.id;
           state.therapists.splice(idx, 1);
-          // 清理關聯資料
           state.wards.forEach(w => {
             if (w.otId === delId) w.otId = '';
             ['am', 'pm'].forEach(p => {
@@ -3369,12 +2849,7 @@
     function exportJSON() {
       const periods = getPeriods();
       const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${state.year}年${periods.label}_病房活動排程專案.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      triggerBlobDownload(blob, `${state.year}年${periods.label}_病房活動排程專案.json`);
       showToast('已下載專案備份檔 (.json)', 'success');
     }
 
@@ -3409,8 +2884,736 @@
       reader.readAsText(file);
     }
 
+    function triggerBlobDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
     // =========================================================================
-    // 12. 共用 Modal 與 Toast 系統（不使用 alert/confirm）
+    // 10. 輸出與列印設定彈窗（含版面字體／列高微調；唯讀模式亦可自由使用）
+    // =========================================================================
+    function openExportModal() {
+      const wardCheckboxes = state.wards.map(w => {
+        const ot = getTherapist(w.otId);
+        return `
+          <label class="flex items-center justify-between p-2.5 rounded-xl border border-cream-200 bg-white hover:bg-morandi-tealLight/40 cursor-pointer transition">
+            <div class="flex items-center gap-2.5">
+              <input type="checkbox" name="exportWard" value="${w.id}" checked onchange="updateExportCount()"
+                class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
+              <span class="px-2 py-0.5 rounded-md bg-morandi-tealLight text-morandi-tealDark text-xs font-extrabold">${escapeHtml(w.name)}</span>
+              <span class="text-sm font-semibold text-slate-800">${escapeHtml(w.name.replace('W', ''))}病房活動時間表</span>
+            </div>
+            <span class="text-xs text-slate-500">負責OT：${ot ? escapeHtml(ot.name) : '未指派'}</span>
+          </label>
+        `;
+      }).join('');
+
+      const bodyHtml = `
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-cream-200">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" onclick="selectExportPreset('all')"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-cream-100 hover:bg-cream-200 text-slate-700 border border-cream-300 transition">全選</button>
+            <button type="button" onclick="selectExportPreset('wardsOnly')"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-morandi-tealLight hover:bg-morandi-teal/20 text-morandi-tealDark border border-morandi-teal/30 transition">僅選全部病房公告表</button>
+            <button type="button" onclick="selectExportPreset('none')"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white hover:bg-cream-100 text-slate-500 border border-cream-300 transition">全不選</button>
+          </div>
+          <span id="exportSelectedCount" class="text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-teal text-white">已勾選 ${state.wards.length} 項</span>
+        </div>
+
+        <!-- 列印與 Word 版面微調設定 -->
+        <div class="p-3 rounded-xl bg-cream-50 border border-cream-200 space-y-2.5">
+          <p class="text-xs font-bold text-slate-700">列印與 Word 公告表版面微調</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label for="exportFontSizeSelect" class="block text-[11px] font-semibold text-slate-600 mb-1">公告字體大小</label>
+              <select id="exportFontSizeSelect" onchange="PRINT_LAYOUT_PREFS.fontSize = this.value"
+                class="w-full px-2.5 py-1.5 text-xs font-semibold bg-white border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-morandi-teal">
+                <option value="compact" ${PRINT_LAYOUT_PREFS.fontSize === 'compact' ? 'selected' : ''}>緊湊（避免跨頁）</option>
+                <option value="standard" ${PRINT_LAYOUT_PREFS.fontSize === 'standard' ? 'selected' : ''}>標準（推薦）</option>
+                <option value="large" ${PRINT_LAYOUT_PREFS.fontSize === 'large' ? 'selected' : ''}>放大（方便病房張貼）</option>
+              </select>
+            </div>
+            <div>
+              <label for="exportRowHeightSelect" class="block text-[11px] font-semibold text-slate-600 mb-1">表格列高</label>
+              <select id="exportRowHeightSelect" onchange="PRINT_LAYOUT_PREFS.rowHeight = this.value"
+                class="w-full px-2.5 py-1.5 text-xs font-semibold bg-white border border-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-morandi-teal">
+                <option value="compact" ${PRINT_LAYOUT_PREFS.rowHeight === 'compact' ? 'selected' : ''}>緊湊</option>
+                <option value="standard" ${PRINT_LAYOUT_PREFS.rowHeight === 'standard' ? 'selected' : ''}>標準</option>
+                <option value="tall" ${PRINT_LAYOUT_PREFS.rowHeight === 'tall' ? 'selected' : ''}>加高填滿一頁 A4</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">總表與個人課表（供列印與 Word 勾選）</p>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-cream-200 bg-cream-50/60 hover:bg-cream-100/70 cursor-pointer transition">
+            <input id="exportWardSummary" type="checkbox" onchange="updateExportCount()"
+              class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
+            <div>
+              <div class="text-sm font-semibold text-slate-800">各病房活動總覽表（8W~12W 橫向總表）</div>
+              <div class="text-[11px] text-slate-500">彙整所有病房週一至週五上下午排程與 WR 時間</div>
+            </div>
+          </label>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-cream-200 bg-cream-50/60 hover:bg-cream-100/70 cursor-pointer transition">
+            <input id="exportPersonalSummary" type="checkbox" onchange="updateExportCount()"
+              class="w-4 h-4 rounded text-morandi-teal focus:ring-morandi-teal" />
+            <div>
+              <div class="text-sm font-semibold text-slate-800">個人活動時間表（含評估 / ICF / 復工表）</div>
+              <div class="text-[11px] text-slate-500">包含每位治療師個人課表、評估 ICF 與復健工作總表</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">各病房獨立公告表（每病房自動獨立分頁）</p>
+          <div class="space-y-1.5">
+            ${wardCheckboxes}
+          </div>
+        </div>
+      `;
+
+      const footerHtml = `
+        <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
+          <button type="button" onclick="executeSelectedPrint()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-slate-800 hover:bg-slate-900 text-white shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>選擇病房直接列印</span>
+          </button>
+          <button type="button" onclick="executeSelectedWord()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>匯出 Word (.doc)</span>
+          </button>
+          <button type="button" onclick="exportToExcel()"
+            class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>匯出 Excel 總表 (.xlsx)</span>
+          </button>
+        </div>
+      `;
+
+      openModal('輸出與列印設定（自由選擇病房）', bodyHtml, footerHtml);
+      updateExportCount();
+    }
+
+    function selectExportPreset(preset) {
+      const wardSummaryEl = document.getElementById('exportWardSummary');
+      const personalSummaryEl = document.getElementById('exportPersonalSummary');
+      const wardEls = document.querySelectorAll('input[name="exportWard"]');
+
+      if (preset === 'all') {
+        wardSummaryEl.checked = true;
+        personalSummaryEl.checked = true;
+        wardEls.forEach(el => el.checked = true);
+      } else if (preset === 'wardsOnly') {
+        wardSummaryEl.checked = false;
+        personalSummaryEl.checked = false;
+        wardEls.forEach(el => el.checked = true);
+      } else if (preset === 'none') {
+        wardSummaryEl.checked = false;
+        personalSummaryEl.checked = false;
+        wardEls.forEach(el => el.checked = false);
+      }
+      updateExportCount();
+    }
+
+    function getExportSelection() {
+      const includeWardSummary = document.getElementById('exportWardSummary')?.checked || false;
+      const includePersonalSummary = document.getElementById('exportPersonalSummary')?.checked || false;
+      const wardIds = Array.from(document.querySelectorAll('input[name="exportWard"]:checked')).map(el => el.value);
+      const totalCount = (includeWardSummary ? 1 : 0) + (includePersonalSummary ? 1 : 0) + wardIds.length;
+      return { includeWardSummary, includePersonalSummary, wardIds, totalCount };
+    }
+
+    function updateExportCount() {
+      const badge = document.getElementById('exportSelectedCount');
+      if (!badge) return;
+      const { totalCount } = getExportSelection();
+      badge.textContent = `已勾選 ${totalCount} 項`;
+      badge.className = totalCount > 0
+        ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-teal text-white'
+        : 'text-xs font-bold px-2.5 py-1 rounded-full bg-morandi-red text-white';
+    }
+
+    function buildExportFilename(selection, ext) {
+      const halfText = state.half === 'H1' ? '上半年' : '下半年';
+      const scopeParts = [];
+      if (selection.includeWardSummary || selection.includePersonalSummary) {
+        if (selection.includeWardSummary && selection.includePersonalSummary) scopeParts.push('總表與個人表');
+        else if (selection.includeWardSummary) scopeParts.push('病房總表');
+        else scopeParts.push('個人課表');
+      }
+      if (selection.wardIds.length === state.wards.length && state.wards.length > 0) {
+        if (scopeParts.length === 0) scopeParts.push('全病房');
+        else scopeParts.push('全病房公告');
+      } else if (selection.wardIds.length > 0) {
+        scopeParts.push(selection.wardIds.join('_'));
+      }
+      const scopeStr = scopeParts.length > 0 ? scopeParts.join('_') : '病房';
+      return `${state.year}年${halfText}_${scopeStr}活動時間表.${ext}`;
+    }
+
+    // =========================================================================
+    // 11. 列印與 Word 建構器（套用字體與列高微調設定）
+    // =========================================================================
+    function buildWardSummaryBlockHtml(tableClass = 'summary-table') {
+      const periods = getPeriods();
+      const tablesHtml = state.wards.map(w => {
+        const ot = getTherapist(w.otId);
+        return `
+          <table class="${tableClass}" style="margin-bottom:8px;">
+            <tr>
+              <th style="width:12%; background:#E8F1F1;">${escapeHtml(w.name)}</th>
+              <th style="width:14%; background:#F3F4F6;">一</th>
+              <th style="width:14%; background:#F3F4F6;">二</th>
+              <th style="width:14%; background:#F3F4F6;">三</th>
+              <th style="width:14%; background:#F3F4F6;">四</th>
+              <th style="width:14%; background:#F3F4F6;">五</th>
+              <th style="width:18%; background:#F9FAFB;">負責OT / WR</th>
+            </tr>
+            <tr>
+              <td style="font-weight:bold; background:#F9FAFB;">上午</td>
+              ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.am[d])) || '&nbsp;'}</td>`).join('')}
+              <td rowspan="2" style="font-size:9.5pt;"><b>${ot ? escapeHtml(ot.name) : ''}</b><br/>${escapeHtml(w.wrTime || '')}</td>
+            </tr>
+            <tr>
+              <td style="font-weight:bold; background:#F9FAFB;">下午</td>
+              ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.pm[d])) || '&nbsp;'}</td>`).join('')}
+            </tr>
+          </table>
+        `;
+      }).join('');
+
+      return `
+        <h2 style="font-size:14pt; font-weight:bold; text-align:center; margin:0 0 8px 0;">
+          ${state.year}年${periods.label} 精神科病房職能治療活動時間總表
+        </h2>
+        ${tablesHtml}
+      `;
+    }
+
+    function buildPersonalSummaryBlockHtml(tableClass = 'summary-table') {
+      const periods = getPeriods();
+      const personalHtml = state.therapists.map(t => `
+        <table class="${tableClass}" style="margin-bottom:6px;">
+          <tr>
+            <th style="width:14%; background:#E8F1F1;">${escapeHtml(t.name)} (${escapeHtml(t.short)})</th>
+            <th style="width:17.2%; background:#F3F4F6;">一</th>
+            <th style="width:17.2%; background:#F3F4F6;">二</th>
+            <th style="width:17.2%; background:#F3F4F6;">三</th>
+            <th style="width:17.2%; background:#F3F4F6;">四</th>
+            <th style="width:17.2%; background:#F3F4F6;">五</th>
+          </tr>
+          <tr>
+            <td style="background:#FAFAFA; font-size:9pt;">早務</td>
+            ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="font-weight:bold;">上午</td>
+            ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'am', d).join('/')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="font-weight:bold;">下午</td>
+            ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'pm', d).join('/')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="background:#FAFAFA; font-size:9pt;">晚務</td>
+            ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
+          </tr>
+        </table>
+      `).join('');
+
+      const evalRowsHtml = [
+        ['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']
+      ].map(([label, key]) => `
+        <tr>
+          <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
+          ${DAYS.map((_, d) => {
+            const txt = (state.evalIcf[key][d] || []).map(it => {
+              const t = getTherapist(it.therapistId);
+              const cat = getEvalCategory(it);
+              const catStr = cat ? `(${cat})` : '';
+              return `${t ? t.short : ''}${catStr}${it.time ? ' ' + it.time : ''}`;
+            }).join(' / ');
+            return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+
+      const rehabRowsHtml = [
+        ['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']
+      ].map(([label, key]) => `
+        <tr>
+          <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
+          ${DAYS.map((_, d) => {
+            const t = getTherapist(state.rehab[key][d]);
+            return `<td>${t ? escapeHtml(t.short) : '&nbsp;'}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+
+      return `
+        <h2 style="font-size:14pt; font-weight:bold; text-align:center; margin:0 0 8px 0;">
+          ${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作總表
+        </h2>
+        ${personalHtml}
+        <h3 style="font-size:11pt; font-weight:bold; margin:8px 0 4px 0;">評估與 ICF 總表</h3>
+        <table class="${tableClass}" style="margin-bottom:6px;">
+          <tr>
+            <th style="width:14%; background:#F3F4F6;">類別</th>
+            <th style="width:17.2%; background:#F3F4F6;">一</th>
+            <th style="width:17.2%; background:#F3F4F6;">二</th>
+            <th style="width:17.2%; background:#F3F4F6;">三</th>
+            <th style="width:17.2%; background:#F3F4F6;">四</th>
+            <th style="width:17.2%; background:#F3F4F6;">五</th>
+          </tr>
+          ${evalRowsHtml}
+        </table>
+        <h3 style="font-size:11pt; font-weight:bold; margin:8px 0 4px 0;">復健工作（復工）總表</h3>
+        <table class="${tableClass}" style="margin-bottom:6px;">
+          <tr>
+            <th style="width:14%; background:#F3F4F6;">項目</th>
+            <th style="width:17.2%; background:#F3F4F6;">一</th>
+            <th style="width:17.2%; background:#F3F4F6;">二</th>
+            <th style="width:17.2%; background:#F3F4F6;">三</th>
+            <th style="width:17.2%; background:#F3F4F6;">四</th>
+            <th style="width:17.2%; background:#F3F4F6;">五</th>
+          </tr>
+          ${rehabRowsHtml}
+        </table>
+        <p style="font-size:9.5pt; margin-top:6px;">
+          <b>活動輪替順序：</b>${escapeHtml(state.activities.join(' → '))}　｜　
+          <b>紀錄二次順序：</b>${escapeHtml(state.recordOrder)}（本期：${escapeHtml(state.recordCurrent)}）　｜　
+          ${escapeHtml(state.footerNote)}
+        </p>
+      `;
+    }
+
+    function buildSingleWardAnnouncementHtml(w, tableClass = 'announce-word-table', isPrintMode = false) {
+      const periods = getPeriods();
+      const ot = getTherapist(w.otId);
+      const wardNum = w.name.replace('W', '');
+      const fp = FONT_PRESET_MAP[PRINT_LAYOUT_PREFS.fontSize] || FONT_PRESET_MAP.standard;
+      const rh = ROW_HEIGHT_PRESET_MAP[PRINT_LAYOUT_PREFS.rowHeight] || ROW_HEIGHT_PRESET_MAP.standard;
+      const cellHeightStyle = isPrintMode ? rh.printMm : rh.wordPx;
+
+      return `
+        <div style="text-align:center; margin-bottom:10px;">
+          <span style="font-size:${fp.titlePt}pt; font-weight:bold; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
+            ${state.year}年${periods.label} ${escapeHtml(wardNum)}病房活動時間表
+          </span>
+          <span style="font-size:${fp.subtitlePt}pt; font-weight:bold; margin-left:20px; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
+            負責OT：${ot ? escapeHtml(ot.name) : ''}
+          </span>
+        </div>
+        <table class="${tableClass}">
+          <tr>
+            <th style="width:10%; background:#F3F4F6; font-size:${fp.thPt}pt;">時間</th>
+            <th style="width:18%; background:#F3F4F6; font-size:${fp.thPt}pt;">星期一</th>
+            <th style="width:18%; background:#F3F4F6; font-size:${fp.thPt}pt;">星期二</th>
+            <th style="width:18%; background:#F3F4F6; font-size:${fp.thPt}pt;">星期三</th>
+            <th style="width:18%; background:#F3F4F6; font-size:${fp.thPt}pt;">星期四</th>
+            <th style="width:18%; background:#F3F4F6; font-size:${fp.thPt}pt;">星期五</th>
+          </tr>
+          <tr>
+            <td style="font-weight:bold; font-size:${fp.thPt}pt; background:#F9FAFB; height:${cellHeightStyle};">上午<br/>活動</td>
+            ${DAYS.map((_, d) => `<td style="padding:6px 4px; height:${cellHeightStyle};">${buildAnnouncementCellInnerHTML(w.schedule.am[d], periods, true, fp)}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="font-weight:bold; font-size:${fp.thPt}pt; background:#F9FAFB; height:${cellHeightStyle};">下午<br/>活動</td>
+            ${DAYS.map((_, d) => `<td style="padding:6px 4px; height:${cellHeightStyle};">${buildAnnouncementCellInnerHTML(w.schedule.pm[d], periods, true, fp)}</td>`).join('')}
+          </tr>
+        </table>
+      `;
+    }
+
+    function runPrintWithSelection(selection) {
+      if (selection.totalCount === 0) {
+        showToast('請至少勾選一項要列印的內容', 'error');
+        return;
+      }
+
+      const pages = [];
+      if (selection.includeWardSummary) {
+        pages.push(`<div class="print-page">${buildWardSummaryBlockHtml('print-summary-table')}</div>`);
+      }
+      if (selection.includePersonalSummary) {
+        pages.push(`<div class="print-page">${buildPersonalSummaryBlockHtml('print-summary-table')}</div>`);
+      }
+      selection.wardIds.forEach(wId => {
+        const w = state.wards.find(item => item.id === wId);
+        if (w) {
+          pages.push(`<div class="print-page">${buildSingleWardAnnouncementHtml(w, 'print-announce-table', true)}</div>`);
+        }
+      });
+
+      const printEl = document.getElementById('printContainer');
+      printEl.innerHTML = pages.join('');
+      closeModal();
+      setTimeout(() => {
+        window.print();
+      }, 120);
+    }
+
+    function executeSelectedPrint() {
+      runPrintWithSelection(getExportSelection());
+    }
+
+    function printSingleWard(wardId) {
+      runPrintWithSelection({
+        includeWardSummary: false,
+        includePersonalSummary: false,
+        wardIds: [wardId],
+        totalCount: 1
+      });
+    }
+
+    function runWordExportWithSelection(selection) {
+      if (selection.totalCount === 0) {
+        showToast('請至少勾選一項要匯出的內容', 'error');
+        return;
+      }
+
+      try {
+        const periods = getPeriods();
+        const fp = FONT_PRESET_MAP[PRINT_LAYOUT_PREFS.fontSize] || FONT_PRESET_MAP.standard;
+        const sections = [];
+
+        if (selection.includeWardSummary) {
+          sections.push(buildWardSummaryBlockHtml('summary-table'));
+        }
+        if (selection.includePersonalSummary) {
+          sections.push(buildPersonalSummaryBlockHtml('summary-table'));
+        }
+        selection.wardIds.forEach(wId => {
+          const w = state.wards.find(item => item.id === wId);
+          if (w) {
+            sections.push(buildSingleWardAnnouncementHtml(w, 'announce-word-table', false));
+          }
+        });
+
+        const joinedBody = sections.join('<br clear="all" style="page-break-before:always;" />');
+
+        const docHtml = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:w="urn:schemas-microsoft-com:office:word"
+                xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8" />
+            <title>${state.year}年${periods.label}病房活動時間表</title>
+            <style>
+              @page Section1 {
+                size: 29.7cm 21.0cm;
+                mso-page-orientation: landscape;
+                margin: 1.1cm 1.1cm 1.1cm 1.1cm;
+              }
+              div.Section1 { page: Section1; }
+              body {
+                font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+                color: #000000;
+              }
+              table.summary-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10pt;
+              }
+              table.summary-table th, table.summary-table td {
+                border: 1px solid #000000;
+                padding: 3px 4px;
+                text-align: center;
+                vertical-align: middle;
+              }
+              table.announce-word-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-family: "標楷體", "DFKai-SB", "Microsoft JhengHei", sans-serif;
+                font-size: ${fp.namePt}pt;
+              }
+              table.announce-word-table th, table.announce-word-table td {
+                border: 1.5px solid #000000;
+                text-align: center;
+                vertical-align: middle;
+              }
+              table.announce-word-table th {
+                padding: 8px 4px;
+                font-size: ${fp.thPt}pt;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="Section1">
+              ${joinedBody}
+            </div>
+          </body>
+          </html>
+        `;
+
+        const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
+        const filename = buildExportFilename(selection, 'doc');
+        triggerBlobDownload(blob, filename);
+        closeModal();
+        showToast(`已成功匯出 Word：${filename}`, 'success');
+      } catch (err) {
+        console.error('匯出 Word 失敗:', err);
+        showToast('匯出 Word 時發生錯誤', 'error');
+      }
+    }
+
+    function executeSelectedWord() {
+      runWordExportWithSelection(getExportSelection());
+    }
+
+    function exportSingleWardWord(wardId) {
+      runWordExportWithSelection({
+        includeWardSummary: false,
+        includePersonalSummary: false,
+        wardIds: [wardId],
+        totalCount: 1
+      });
+    }
+
+    // =========================================================================
+    // 12. 雙重保障的匯出 Excel (.xlsx) 實作（支援唯讀模式、備援 CDN 與 .xls 降級）
+    // =========================================================================
+    function ensureSheetJSReady() {
+      return new Promise((resolve) => {
+        if (typeof window.XLSX !== 'undefined') {
+          resolve(true);
+          return;
+        }
+        loadSheetJSFallback((ok) => resolve(ok));
+      });
+    }
+
+    /**
+     * 建構 4 個工作表的二維陣列資料（供 SheetJS .xlsx 與降級 .xls 共用）
+     */
+    function buildExcelSheetsData() {
+      const periods = getPeriods();
+      const periodLabel = formatPeriodLabel(state.year, state.half);
+
+      // (1) 各病房活動排程
+      const sheetWards = [
+        [`${periodLabel} 精神科病房職能治療活動排程`],
+        []
+      ];
+      state.wards.forEach(w => {
+        const ot = getTherapist(w.otId);
+        sheetWards.push([w.name, '星期一', '星期二', '星期三', '星期四', '星期五', `負責OT：${ot ? ot.name : '未指派'}`, w.wrTime || '']);
+        sheetWards.push(['上午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.am[d]))]);
+        sheetWards.push(['下午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.pm[d]))]);
+        sheetWards.push([]);
+      });
+
+      // (2) 個人課表總覽
+      const sheetPersonal = [
+        [`${periodLabel} 治療師個人課表總覽`],
+        []
+      ];
+      state.therapists.forEach(t => {
+        sheetPersonal.push([`${t.name} (${t.short})`, '星期一', '星期二', '星期三', '星期四', '星期五']);
+        sheetPersonal.push(['早務（復工/評估/ICF/業務）', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join('、'))]);
+        sheetPersonal.push(['上午病房活動', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'am', d).join(' / '))]);
+        sheetPersonal.push(['下午病房活動', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'pm', d).join(' / '))]);
+        sheetPersonal.push(['晚務（復工/評估/ICF/業務）', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join('、'))]);
+        sheetPersonal.push([]);
+      });
+
+      // (3) 評估與ICF總表（含復健工作總表與備註）
+      const sheetEvalIcf = [
+        [`${periodLabel} 評估與 ICF 總表`],
+        ['類別', '星期一', '星期二', '星期三', '星期四', '星期五']
+      ];
+      [
+        ['上午評估', 'amEval'],
+        ['上午 ICF', 'amIcf'],
+        ['下午評估', 'pmEval'],
+        ['下午 ICF', 'pmIcf']
+      ].forEach(([label, key]) => {
+        sheetEvalIcf.push([
+          label,
+          ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
+            const t = getTherapist(it.therapistId);
+            const cat = getEvalCategory(it);
+            const catStr = cat ? `(${cat})` : '';
+            return `${t ? t.short : ''}${catStr}${it.time ? ' ' + it.time : ''}`;
+          }).join(' / '))
+        ]);
+      });
+      sheetEvalIcf.push([]);
+      sheetEvalIcf.push(['復健工作（復工）總表', '星期一', '星期二', '星期三', '星期四', '星期五']);
+      [
+        ['上午園藝', 'amGarden'],
+        ['上午掃地', 'amSweep'],
+        ['下午園藝', 'pmGarden'],
+        ['下午掃地', 'pmSweep']
+      ].forEach(([label, key]) => {
+        sheetEvalIcf.push([
+          label,
+          ...DAYS.map((_, d) => {
+            const t = getTherapist(state.rehab[key][d]);
+            return t ? `${t.short} (${t.name})` : '';
+          })
+        ]);
+      });
+      sheetEvalIcf.push([]);
+      sheetEvalIcf.push(['紀錄二次順序', state.recordOrder || '']);
+      sheetEvalIcf.push(['本期二次紀錄', state.recordCurrent || '']);
+      sheetEvalIcf.push(['總表備註', state.footerNote || '']);
+
+      // (4) 活動輪替與公告
+      const formatAnnouncementPlain = (cell) => {
+        const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
+        const hasWR = cell.tags.includes('WR');
+        const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
+
+        if (therapists.length === 0) {
+          return [...cell.tags, cell.customNote].filter(Boolean).join(' / ');
+        }
+        if (nonRotTags.length > 0) {
+          const names = therapists.map(t => t.name).join('、');
+          return `${names}\n${nonRotTags.join('、')}${hasWR ? '/WR' : ''}${cell.customNote ? '\n' + cell.customNote : ''}`;
+        }
+        return therapists.map(t => {
+          const rot = getTherapistRotation(t);
+          return `${t.name}${hasWR ? '(WR)' : ''}\n${periods.cols[0]}:${rot[0]} | ${periods.cols[1]}:${rot[1]} | ${periods.cols[2]}:${rot[2]}`;
+        }).join('\n') + (cell.customNote ? `\n${cell.customNote}` : '');
+      };
+
+      const sheetRotation = [
+        [`${periodLabel} 活動輪替對照與各病房公告內容`],
+        ['活動輪替順序', state.activities.join(' → ')],
+        [],
+        ['治療師', periods.cols[0], periods.cols[1], periods.cols[2]]
+      ];
+      state.therapists.forEach(t => {
+        const rot = getTherapistRotation(t);
+        sheetRotation.push([`${t.name} (${t.short})`, rot[0], rot[1], rot[2]]);
+      });
+      sheetRotation.push([]);
+
+      state.wards.forEach(w => {
+        const ot = getTherapist(w.otId);
+        const wardNum = w.name.replace('W', '');
+        sheetRotation.push([`${state.year}年${periods.label} ${wardNum}病房活動時間表`, '', '', '', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
+        sheetRotation.push(['時間', '星期一', '星期二', '星期三', '星期四', '星期五']);
+        sheetRotation.push(['上午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.am[d]))]);
+        sheetRotation.push(['下午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.pm[d]))]);
+        sheetRotation.push([]);
+      });
+
+      return {
+        periodLabel,
+        sheets: [
+          {
+            name: '各病房活動排程',
+            data: sheetWards,
+            cols: [{ wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 15 }]
+          },
+          {
+            name: '個人課表總覽',
+            data: sheetPersonal,
+            cols: [{ wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }]
+          },
+          {
+            name: '評估與ICF總表',
+            data: sheetEvalIcf,
+            cols: [{ wch: 20 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }]
+          },
+          {
+            name: '活動輪替與公告',
+            data: sheetRotation,
+            cols: [{ wch: 20 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 26 }, { wch: 26 }]
+          }
+        ]
+      };
+    }
+
+    /**
+     * 降級方案：當極端網路環境導致兩個 SheetJS CDN 都無法載入時，輸出 Excel 相容 HTML-Table (.xls)
+     */
+    function exportFallbackHtmlXls(sheetsObj, baseFilename) {
+      const tablesHtml = sheetsObj.sheets.map(s => {
+        const rowsHtml = s.data.map((row, rIdx) => {
+          const cells = row.map(cell => {
+            const safe = escapeHtml(cell).replace(/\n/g, '<br/>');
+            const bg = rIdx === 0 ? 'background:#E8F1F1;font-weight:bold;font-size:13pt;' : '';
+            return `<td style="border:1px solid #888;padding:4px 6px;vertical-align:middle;${bg}">${safe}</td>`;
+          }).join('');
+          return `<tr>${cells}</tr>`;
+        }).join('');
+        return `
+          <h3 style="font-family:'Microsoft JhengHei',sans-serif;margin:12px 0 4px;">${escapeHtml(s.name)}</h3>
+          <table style="border-collapse:collapse;font-family:'Microsoft JhengHei',sans-serif;font-size:10.5pt;margin-bottom:16px;">
+            ${rowsHtml}
+          </table>
+        `;
+      }).join('');
+
+      const xlsHtml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8" />
+          <title>${escapeHtml(baseFilename)}</title>
+        </head>
+        <body>${tablesHtml}</body>
+        </html>
+      `;
+      const blob = new Blob(['\ufeff' + xlsHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+      const fallbackName = `${baseFilename}.xls`;
+      triggerBlobDownload(blob, fallbackName);
+      closeModal();
+      showToast(`網路無法載入 xlsx 元件，已自動改用相容格式下載：${fallbackName}`, 'info');
+    }
+
+    /**
+     * 主匯出 Excel 函式（在唯讀與編輯模式皆可點擊）
+     */
+    async function exportToExcel() {
+      try {
+        const sheetsObj = buildExcelSheetsData();
+        const safePeriodLabel = sheetsObj.periodLabel.replace(/[\\/:*?"<>|]/g, '_');
+        const baseFilename = `精神科病房OT活動時間表_${safePeriodLabel}`;
+
+        const hasXlsx = await ensureSheetJSReady();
+        if (!hasXlsx || typeof window.XLSX === 'undefined') {
+          exportFallbackHtmlXls(sheetsObj, baseFilename);
+          return;
+        }
+
+        const wb = window.XLSX.utils.book_new();
+        sheetsObj.sheets.forEach(s => {
+          const ws = window.XLSX.utils.aoa_to_sheet(s.data);
+          ws['!cols'] = s.cols;
+          window.XLSX.utils.book_append_sheet(wb, ws, s.name);
+        });
+
+        const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const filename = `${baseFilename}.xlsx`;
+        triggerBlobDownload(blob, filename);
+        closeModal();
+        showToast(`已成功匯出 Excel：${filename}`, 'success');
+      } catch (err) {
+        console.error('匯出 Excel 發生錯誤:', err);
+        showToast(`匯出 Excel 失敗：${err.message || '請稍後再試'}`, 'error');
+      }
+    }
+
+    // =========================================================================
+    // 13. 共用 Modal 與 Toast 系統（不使用 alert/confirm）
     // =========================================================================
     function openModal(title, bodyHtml, footerHtml) {
       document.getElementById('modalTitle').textContent = title;
@@ -3438,8 +3641,8 @@
         title,
         `<p class="text-sm text-slate-700 leading-relaxed">${message}</p>`,
         `
-          <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-          <button onclick="executeConfirmModal()" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-red hover:bg-red-700 text-white">確定執行</button>
+          <button type="button" onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+          <button type="button" onclick="executeConfirmModal()" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-red hover:bg-red-700 text-white">確定執行</button>
         `
       );
     }
@@ -3470,18 +3673,26 @@
       setTimeout(() => {
         el.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => el.remove(), 300);
-      }, 2600);
+      }, 2800);
     }
 
     // =========================================================================
-    // 13. 事件綁定與初始化
+    // 14. 初始化與事件綁定
     // =========================================================================
     window.addEventListener('DOMContentLoaded', () => {
       loadLocalPeriods();
 
+      // 明確使用 addEventListener 綁定頂部編輯密碼鎖按鈕
+      const lockBtn = document.getElementById('lockToggleBtn');
+      if (lockBtn) {
+        lockBtn.addEventListener('click', handleLockToggleClick);
+      }
+
       // Tab 2 備註欄位監聽
       ['recordOrderInput', 'recordCurrentInput', 'footerNoteInput'].forEach(id => {
-        document.getElementById(id).addEventListener('input', (e) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', (e) => {
           const map = {
             recordOrderInput: 'recordOrder',
             recordCurrentInput: 'recordCurrent',
@@ -3496,11 +3707,10 @@
         });
       });
 
-      // 初始化鎖定狀態並預設進入 Tab 1
       updateLockUI();
       switchTab('wards');
 
-      // 嘗試自動連線 Firebase 雲端同步
+      // 自動連線 Firebase 雲端同步
       initFirebaseAndSync(false);
     });
   </script>
