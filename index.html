@@ -228,6 +228,11 @@
               class="hidden p-1.5 rounded-xl bg-white hover:bg-morandi-tealLight text-morandi-teal border border-cream-300 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </button>
+            <!-- 唯讀 / 編輯模式切換鎖 -->
+            <button id="editLockBtn" onclick="handleEditLockClick()"
+              class="px-2.5 py-1 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition flex items-center gap-1 whitespace-nowrap shadow-xs">
+              🔒 唯讀模式（點此解鎖）
+            </button>
           </div>
         </div>
 
@@ -366,7 +371,7 @@
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-sm font-bold text-slate-800">評估與 ICF 總表</h3>
-              <p class="text-xs text-slate-500">點擊任一格子指派治療師、時間與院區，自動同步至個人課表</p>
+              <p class="text-xs text-slate-500">點擊任一格子指派治療師、時間與類別（成人／兒童），自動同步至個人課表</p>
             </div>
             <span class="text-xs px-2 py-0.5 rounded-lg bg-morandi-tealLight text-morandi-tealDark font-medium">雙向同步</span>
           </div>
@@ -414,7 +419,7 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1">總表底部附註</label>
             <input id="footerNoteInput" type="text"
               class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
-              placeholder="例如：評：斗六 ／ 虎：虎尾" />
+              placeholder="例如：評估與 ICF 類別分為成人／兒童" />
           </div>
         </div>
       </div>
@@ -485,6 +490,37 @@
           <!-- 由 JS 動態渲染 -->
         </div>
       </div>
+
+      <!-- 編輯密碼管理區塊 -->
+      <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <span>🔐 編輯密碼鎖管理</span>
+              <span id="settingsLockBadge" class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">目前：唯讀模式</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">預設編輯密碼為 <code class="px-1.5 py-0.5 bg-cream-100 rounded font-bold text-slate-700">ot1234</code>；修改後的密碼會自動同步至雲端與本機，供團隊統一使用。</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">新編輯密碼</label>
+            <input id="newEditPasswordInput" type="password" placeholder="請輸入新密碼（至少 4 碼）"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">再次確認新密碼</label>
+            <input id="confirmEditPasswordInput" type="password" placeholder="請再次輸入新密碼"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+          </div>
+          <div>
+            <button onclick="changeEditPassword()"
+              class="w-full px-4 py-2 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition">
+              更新編輯密碼
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -529,6 +565,10 @@
     // Firestore 集合名稱（共用現有 Firebase 專案時可獨立區隔資料，不影響其他系統）
     const FIRESTORE_COLLECTION = "ot_ward_schedules";
     const FIREBASE_CONFIG_STORAGE_KEY = "ot_ward_scheduler_firebase_cfg_v1";
+    const DEFAULT_EDIT_PASSWORD = "ot1234";
+    const EDIT_PASSWORD_STORAGE_KEY = "ot_ward_scheduler_edit_pwd_v1";
+    const UNLOCK_SESSION_KEY = "ot_ward_scheduler_unlocked_v1";
+    const SYSTEM_CONFIG_DOC_ID = "_system_config";
 
     // =========================================================================
     // 1. 常數定義與預設範本資料 (113 下半年)
@@ -628,31 +668,31 @@
 
       const evalIcf = {
         amEval: [
-          [{ therapistId: 't_chang', time: '9:00', campus: '' }],
+          [{ therapistId: 't_chang', time: '9:00', category: '成人' }],
           [],
-          [{ therapistId: 't_yi', time: '10:00', campus: '' }],
+          [{ therapistId: 't_yi', time: '10:00', category: '兒童' }],
           [],
-          [{ therapistId: 't_lin', time: '9:00', campus: '' }]
+          [{ therapistId: 't_lin', time: '9:00', category: '成人' }]
         ],
         amIcf: [
           [],
-          [{ therapistId: 't_wu', time: '9:00', campus: '' }],
-          [{ therapistId: 't_yi', time: '8:30', campus: '' }],
-          [{ therapistId: 't_ou', time: '8:30', campus: '' }],
+          [{ therapistId: 't_wu', time: '9:00', category: '成人' }],
+          [{ therapistId: 't_yi', time: '8:30', category: '兒童' }],
+          [{ therapistId: 't_ou', time: '8:30', category: '成人' }],
           []
         ],
         pmEval: [
-          [{ therapistId: 't_ou', time: '15:30', campus: '' }],
+          [{ therapistId: 't_ou', time: '15:30', category: '成人' }],
           [],
-          [{ therapistId: 't_wu', time: '15:30', campus: '' }],
-          [{ therapistId: 't_chen', time: '15:30', campus: '' }],
+          [{ therapistId: 't_wu', time: '15:30', category: '成人' }],
+          [{ therapistId: 't_chen', time: '15:30', category: '成人' }],
           []
         ],
         pmIcf: [
-          [{ therapistId: 't_lin', time: '14:00', campus: '' }],
+          [{ therapistId: 't_lin', time: '14:00', category: '成人' }],
           [],
-          [{ therapistId: 't_chen', time: '14:00', campus: '' }],
-          [{ therapistId: 't_chang', time: '16:00', campus: '' }],
+          [{ therapistId: 't_chen', time: '14:00', category: '成人' }],
+          [{ therapistId: 't_chang', time: '16:00', category: '成人' }],
           []
         ]
       };
@@ -688,7 +728,7 @@
         personalExtra,
         recordOrder: '歐黃陳吳林張儀',
         recordCurrent: '儀 歐 吳',
-        footerNote: '評：斗六 ／ 虎：虎尾'
+        footerNote: '評估與 ICF 類別：成人 ／ 兒童'
       };
     }
 
@@ -702,53 +742,127 @@
     // brush: { mode: 'edit' | 'therapist' | 'tag' | 'eraser', value: string }
     let activeBrush = { mode: 'edit', value: '' };
 
-    // Firebase 執行期狀態
-    let firebaseApp = null;
-    let firestoreDb = null;
-    let isCloudConnected = false;
-    let syncDebounceTimer = null;
+    // 唯讀 / 編輯密碼鎖狀態（同一分頁暫存於 sessionStorage）
+    let isEditMode = sessionStorage.getItem(UNLOCK_SESSION_KEY) === 'true';
+    let currentEditPassword = localStorage.getItem(EDIT_PASSWORD_STORAGE_KEY) || DEFAULT_EDIT_PASSWORD;
 
-    function makePeriodKey(year, half) {
-      return `${year}-${half}`;
+    function requireEditMode() {
+      if (isEditMode) return true;
+      showToast('目前為唯讀模式，請先點擊上方「🔒 唯讀模式」輸入密碼解鎖編輯', 'info');
+      return false;
     }
 
-    function formatPeriodLabel(year, half) {
-      return `${year}年 ${half === 'H1' ? '上半年 (1~6月)' : '下半年 (7~12月)'}`;
+    function updateEditLockUI() {
+      const btn = document.getElementById('editLockBtn');
+      const settingsBadge = document.getElementById('settingsLockBadge');
+      if (btn) {
+        if (isEditMode) {
+          btn.className = 'px-2.5 py-1 text-xs font-bold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition flex items-center gap-1 whitespace-nowrap shadow-xs';
+          btn.textContent = '🔓 編輯模式（點擊鎖定）';
+        } else {
+          btn.className = 'px-2.5 py-1 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition flex items-center gap-1 whitespace-nowrap shadow-xs';
+          btn.textContent = '🔒 唯讀模式（點此解鎖）';
+        }
+      }
+      if (settingsBadge) {
+        if (isEditMode) {
+          settingsBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold';
+          settingsBadge.textContent = '目前：編輯模式（已解鎖）';
+        } else {
+          settingsBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold';
+          settingsBadge.textContent = '目前：唯讀模式';
+        }
+      }
     }
 
-    function getSortedPeriodKeys() {
-      return Object.keys(periodsStore).sort((a, b) => {
-        const [yA, hA] = a.split('-');
-        const [yB, hB] = b.split('-');
-        const diffY = parseInt(yB, 10) - parseInt(yA, 10);
-        if (diffY !== 0) return diffY;
-        // H2 排在 H1 前面（由新到舊）
-        return hA === hB ? 0 : (hB === 'H2' ? 1 : -1);
-      });
-    }
-
-    function updateSyncStatusUI(status, customText = '') {
-      const badge = document.getElementById('syncStatusBadge');
-      const syncBtn = document.getElementById('manualSyncBtn');
-      if (!badge) return;
-
-      const nowStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
-      if (status === 'synced') {
-        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 whitespace-nowrap';
-        badge.textContent = customText || `☁️ 雲端已同步 ${nowStr}`;
-        if (syncBtn) syncBtn.classList.remove('hidden');
-      } else if (status === 'syncing') {
-        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1 whitespace-nowrap';
-        badge.textContent = customText || '⏳ 同步中...';
-        if (syncBtn) syncBtn.classList.remove('hidden');
-      } else if (status === 'error') {
-        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-morandi-redLight text-morandi-red border border-red-200 flex items-center gap-1 whitespace-nowrap';
-        badge.textContent = customText || '⚠️ 連線異常';
-        if (syncBtn) syncBtn.classList.remove('hidden');
+    function handleEditLockClick() {
+      if (isEditMode) {
+        isEditMode = false;
+        sessionStorage.removeItem(UNLOCK_SESSION_KEY);
+        activeBrush = { mode: 'edit', value: '' };
+        updateEditLockUI();
+        renderAll();
+        showToast('已切換回「🔒 唯讀模式」，排程已鎖定保護', 'info');
       } else {
-        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-cream-100 text-slate-600 border border-cream-300 flex items-center gap-1 whitespace-nowrap';
-        badge.textContent = customText || '💾 本機模式';
-        if (syncBtn) syncBtn.classList.add('hidden');
+        openUnlockModal();
+      }
+    }
+
+    function openUnlockModal() {
+      const bodyHtml = `
+        <div class="space-y-3">
+          <p class="text-xs text-slate-600 leading-relaxed">
+            為避免誤改排程，系統預設開啟唯讀保護。請輸入編輯密碼以解鎖排班與設定功能。
+          </p>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">編輯密碼</label>
+            <input id="unlockPasswordInput" type="password" placeholder="請輸入密碼"
+              onkeydown="if(event.key==='Enter') submitUnlockPassword()"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+            <p class="text-[11px] text-slate-400 mt-1.5">預設密碼：<code class="px-1 py-0.5 bg-cream-100 rounded text-slate-600">ot1234</code>（解鎖後可於「4. 人員與基本設定」修改）</p>
+          </div>
+        </div>
+      `;
+      const footerHtml = `
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button onclick="submitUnlockPassword()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">解鎖編輯</button>
+      `;
+      openModal('🔓 解鎖編輯模式', bodyHtml, footerHtml);
+      setTimeout(() => {
+        document.getElementById('unlockPasswordInput')?.focus();
+      }, 60);
+    }
+
+    function submitUnlockPassword() {
+      const inputVal = (document.getElementById('unlockPasswordInput')?.value || '').trim();
+      if (inputVal === currentEditPassword) {
+        isEditMode = true;
+        sessionStorage.setItem(UNLOCK_SESSION_KEY, 'true');
+        closeModal();
+        updateEditLockUI();
+        renderAll();
+        showToast('解鎖成功！已切換為「🔓 編輯模式」', 'success');
+      } else {
+        showToast('密碼錯誤，請重新輸入', 'error');
+        const inp = document.getElementById('unlockPasswordInput');
+        if (inp) {
+          inp.value = '';
+          inp.focus();
+        }
+      }
+    }
+
+    async function changeEditPassword() {
+      if (!requireEditMode()) return;
+      const p1 = (document.getElementById('newEditPasswordInput')?.value || '').trim();
+      const p2 = (document.getElementById('confirmEditPasswordInput')?.value || '').trim();
+      if (p1.length < 4) {
+        showToast('新密碼長度至少需 4 碼', 'error');
+        return;
+      }
+      if (p1 !== p2) {
+        showToast('兩次輸入的新密碼不一致', 'error');
+        return;
+      }
+
+      currentEditPassword = p1;
+      localStorage.setItem(EDIT_PASSWORD_STORAGE_KEY, p1);
+      document.getElementById('newEditPasswordInput').value = '';
+      document.getElementById('confirmEditPasswordInput').value = '';
+
+      if (isCloudConnected && firestoreDb) {
+        try {
+          await firestoreDb.collection(FIRESTORE_COLLECTION).doc(SYSTEM_CONFIG_DOC_ID).set({
+            payload: JSON.stringify({ editPassword: p1 }),
+            updatedAt: Date.now()
+          });
+          showToast('編輯密碼已更新並同步至雲端', 'success');
+        } catch (err) {
+          console.error('同步密碼至雲端失敗:', err);
+          showToast('編輯密碼已更新於本機（雲端同步失敗）', 'info');
+        }
+      } else {
+        showToast('編輯密碼已更新於本機', 'success');
       }
     }
 
@@ -922,6 +1036,14 @@
             try {
               const raw = doc.data();
               const data = (raw && typeof raw.payload === 'string') ? JSON.parse(raw.payload) : raw;
+              // 系統設定文件（同步團隊編輯密碼）
+              if (doc.id === SYSTEM_CONFIG_DOC_ID) {
+                if (data && data.editPassword) {
+                  currentEditPassword = data.editPassword;
+                  localStorage.setItem(EDIT_PASSWORD_STORAGE_KEY, currentEditPassword);
+                }
+                return;
+              }
               if (data && Array.isArray(data.therapists) && Array.isArray(data.wards)) {
                 cloudStore[doc.id] = data;
               }
@@ -986,6 +1108,7 @@
     }
 
     function openNewPeriodModal() {
+      if (!requireEditMode()) return;
       const sorted = getSortedPeriodKeys();
       const latest = periodsStore[sorted[0]];
       // 自動推測下一個半年期別
@@ -1122,6 +1245,7 @@
     }
 
     function confirmDeleteCurrentPeriod() {
+      if (!requireEditMode()) return;
       const keys = Object.keys(periodsStore);
       if (keys.length <= 1) {
         showToast('至少須保留 1 個期別，無法刪除', 'error');
@@ -1242,10 +1366,15 @@
       return state.therapists.find(t => t.id === id) || null;
     }
 
-    function getPeriods() {
-      return state.half === 'H1'
-        ? { label: '1~6月', cols: ['1-2月', '3-4月', '5-6月'] }
-        : { label: '7~12月', cols: ['7-8月', '9-10月', '11-12月'] };
+    /**
+     * 取得評估/ICF類別（向下相容舊資料的 campus 欄位，預設回傳「成人」）
+     */
+    function getEvalCategory(item) {
+      if (!item) return '成人';
+      const val = (item.category || item.campus || '').trim();
+      if (val === '兒童') return '兒童';
+      if (val === '成人') return '成人';
+      return val || '成人';
     }
 
     function getTherapistRotation(therapist) {
@@ -1377,8 +1506,14 @@
       const icfKey = period === 'am' ? 'amIcf' : 'pmIcf';
       state.evalIcf[evalKey][dayIdx].forEach(item => {
         if (item.therapistId === therapistId) {
-          const campusStr = item.campus ? item.campus : '';
-          tasks.push({ text: `評${campusStr}${item.time ? ' ' + item.time : ''}`, type: 'eval' });
+          const catStr = getEvalCategory(item);
+          tasks.push({ text: `評(${catStr})${item.time ? ' ' + item.time : ''}`, type: 'eval' });
+        }
+      });
+      state.evalIcf[icfKey][dayIdx].forEach(item => {
+        if (item.therapistId === therapistId) {
+          const catStr = getEvalCategory(item);
+          tasks.push({ text: `ICF(${catStr})${item.time ? ' ' + item.time : ''}`, type: 'icf' });
         }
       });
       state.evalIcf[icfKey][dayIdx].forEach(item => {
@@ -1441,9 +1576,9 @@
     }
 
     function renderAll() {
-      // 同步頂部期別下拉選單
+      // 同步頂部期別下拉選單與唯讀鎖定狀態
       renderPeriodSelector();
-
+      updateEditLockUI();
       const conflicts = detectConflicts();
       const conflictCount = Object.keys(conflicts).length;
 
@@ -1481,6 +1616,7 @@
     // 5. TAB 1 渲染與互動：各病房活動排程
     // =========================================================================
     function setBrush(mode, value = '') {
+      if (mode !== 'edit' && !requireEditMode()) return;
       activeBrush = { mode, value };
       renderBrushToolbar();
     }
@@ -1687,12 +1823,17 @@
     }
 
     function updateWardMeta(wIdx, field, val) {
+      if (!requireEditMode()) {
+        renderAll();
+        return;
+      }
       state.wards[wIdx][field] = val;
       saveState();
       showToast(`已更新 ${state.wards[wIdx].name} 設定`, 'success');
     }
 
     function handleWardCellClick(wIdx, period, dayIdx) {
+      if (!requireEditMode()) return;
       const cell = state.wards[wIdx].schedule[period][dayIdx];
 
       if (activeBrush.mode === 'edit') {
@@ -1936,6 +2077,7 @@
     }
 
     function openPersonalExtraModal(therapistId, period, dayIdx) {
+      if (!requireEditMode()) return;
       const t = getTherapist(therapistId);
       if (!t) return;
       ensurePersonalExtraKeys();
@@ -2015,8 +2157,12 @@
           const pills = items.map(it => {
             const t = getTherapist(it.therapistId);
             const tName = t ? t.short : '?';
-            return `<div class="px-1.5 py-0.5 rounded-md border text-[11px] font-semibold leading-tight ${r.badgeCls}">
-              ${escapeHtml(tName)}${it.campus ? escapeHtml(it.campus) : ''} ${escapeHtml(it.time)}
+            const cat = getEvalCategory(it);
+            const catBadge = cat === '兒童'
+              ? `<span class="px-1 rounded bg-rose-100 text-rose-700 text-[10px]">兒童</span>`
+              : `<span class="px-1 rounded bg-sky-100 text-sky-700 text-[10px]">${escapeHtml(cat)}</span>`;
+            return `<div class="px-1.5 py-0.5 rounded-md border text-[11px] font-semibold leading-tight flex items-center gap-1 ${r.badgeCls}">
+              <span>${escapeHtml(tName)}</span>${catBadge}<span>${escapeHtml(it.time)}</span>
             </div>`;
           }).join('');
           html += `
@@ -2037,7 +2183,83 @@
 
     let tempEvalItems = [];
     function openEvalIcfModal(rowKey, rowLabel, dayIdx) {
+      if (!requireEditMode()) return;
       tempEvalItems = JSON.parse(JSON.stringify(state.evalIcf[rowKey][dayIdx] || []));
+      renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
+    }
+
+    function renderEvalIcfModalContent(rowKey, rowLabel, dayIdx) {
+      const listHtml = tempEvalItems.length === 0
+        ? `<div class="text-xs text-slate-400 text-center py-3 bg-cream-50 rounded-xl border border-dashed border-cream-300">目前尚未排入人員，請於下方新增</div>`
+        : tempEvalItems.map((it, idx) => {
+            const t = getTherapist(it.therapistId);
+            const cat = getEvalCategory(it);
+            const catCls = cat === '兒童' ? 'bg-rose-100 text-rose-700' : 'bg-morandi-tealLight text-morandi-tealDark';
+            return `
+              <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-cream-50 border border-cream-200">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <span class="w-6 h-6 rounded-full text-xs text-white flex items-center justify-center" style="background-color:${t ? t.color : '#888'}">${t ? escapeHtml(t.short) : '?'}</span>
+                  <span>${t ? escapeHtml(t.name) : '未知'}</span>
+                  <span class="px-1.5 py-0.5 text-xs rounded font-bold ${catCls}">${escapeHtml(cat)}</span>
+                  <span class="text-slate-600">${escapeHtml(it.time)}</span>
+                </div>
+                <button onclick="removeTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx}, ${idx})" class="text-xs text-morandi-red hover:underline font-medium">移除</button>
+              </div>
+            `;
+          }).join('');
+
+      const tOptions = state.therapists.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${escapeHtml(t.short)})</option>`).join('');
+      const timeChips = QUICK_TIMES.map(tm =>
+        `<button type="button" onclick="document.getElementById('evalTimeInput').value='${tm}'" class="px-2 py-0.5 rounded-lg bg-cream-100 hover:bg-morandi-tealLight text-xs text-slate-700 border border-cream-300">${tm}</button>`
+      ).join('');
+
+      const bodyHtml = `
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500">已指派清單</p>
+          ${listHtml}
+        </div>
+        <div class="p-3.5 rounded-xl bg-cream-50 border border-cream-200 space-y-3">
+          <p class="text-xs font-bold text-slate-700">新增指派</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">治療師</label>
+              <select id="evalTherapistSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">${tOptions}</select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-1">類別</label>
+              <select id="evalCategorySelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl font-semibold">
+                <option value="成人" selected>成人</option>
+                <option value="兒童">兒童</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">時間</label>
+            <input id="evalTimeInput" type="text" value="${rowKey.startsWith('am') ? '9:00' : '15:30'}"
+              class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl mb-2" placeholder="例如：9:00 或 15:30" />
+            <div class="flex flex-wrap gap-1">${timeChips}</div>
+          </div>
+          <button type="button" onclick="addTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx})"
+            class="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition">
+            + 加入清單
+          </button>
+        </div>
+      `;
+
+      const footerHtml = `
+        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
+        <button onclick="saveEvalIcfModal('${rowKey}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存變更</button>
+      `;
+
+      openModal(`${rowLabel} — 週${DAYS[dayIdx]}`, bodyHtml, footerHtml);
+    }
+
+    function addTempEvalItem(rowKey, rowLabel, dayIdx) {
+      const therapistId = document.getElementById('evalTherapistSelect').value;
+      const category = document.getElementById('evalCategorySelect').value || '成人';
+      const time = document.getElementById('evalTimeInput').value.trim();
+      if (!therapistId) return;
+      tempEvalItems.push({ therapistId, category, time });
       renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
     }
 
@@ -2176,6 +2398,10 @@
     }
 
     function updateRehabCell(rowKey, dayIdx, therapistId) {
+      if (!requireEditMode()) {
+        renderAll();
+        return;
+      }
       state.rehab[rowKey][dayIdx] = therapistId;
       saveState();
       renderAll();
@@ -2199,6 +2425,10 @@
     }
 
     function updateActivityName(idx, val) {
+      if (!requireEditMode()) {
+        renderAll();
+        return;
+      }
       const trimmed = val.trim();
       if (!trimmed) return;
       state.activities[idx] = trimmed;
@@ -2253,6 +2483,10 @@
     }
 
     function updateTherapistStartAct(tIdx, actIdx) {
+      if (!requireEditMode()) {
+        renderAll();
+        return;
+      }
       state.therapists[tIdx].startActivityIndex = parseInt(actIdx, 10) || 0;
       saveState();
       renderAll();
@@ -2630,7 +2864,8 @@
           ${DAYS.map((_, d) => {
             const txt = (state.evalIcf[key][d] || []).map(it => {
               const t = getTherapist(it.therapistId);
-              return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
+              const cat = getEvalCategory(it);
+              return `${t ? t.short : ''}(${cat})${it.time ? ' ' + it.time : ''}`;
             }).join(' / ');
             return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
           }).join('')}
@@ -2927,7 +3162,8 @@
               label,
               ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
                 const t = getTherapist(it.therapistId);
-                return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
+                const cat = getEvalCategory(it);
+                return `${t ? t.short : ''}(${cat})${it.time ? ' ' + it.time : ''}`;
               }).join(' / '))
             ]);
           });
@@ -3046,6 +3282,10 @@
     }
 
     function updateTherapistField(idx, field, val) {
+      if (!requireEditMode()) {
+        renderAll();
+        return;
+      }
       const trimmed = val.trim();
       if (!trimmed) return;
       state.therapists[idx][field] = trimmed;
@@ -3055,6 +3295,7 @@
     }
 
     function updateTherapistColor(idx, paletteIdx) {
+      if (!requireEditMode()) return;
       const p = MORANDI_PALETTE[paletteIdx];
       state.therapists[idx].color = p.color;
       state.therapists[idx].bg = p.bg;
@@ -3064,6 +3305,7 @@
     }
 
     function addNewTherapist() {
+      if (!requireEditMode()) return;
       const p = MORANDI_PALETTE[state.therapists.length % MORANDI_PALETTE.length];
       const newId = 't_' + Date.now();
       state.therapists.push({
@@ -3080,6 +3322,7 @@
     }
 
     function confirmDeleteTherapist(idx) {
+      if (!requireEditMode()) return;
       if (state.therapists.length <= 1) {
         showToast('至少需保留一位治療師', 'error');
         return;
@@ -3125,6 +3368,7 @@
     // 9. 頂部動作：載入範本、清空、JSON 專案存取
     // =========================================================================
     function confirmLoadTemplate() {
+      if (!requireEditMode()) return;
       openConfirmModal(
         '載入 113 下半年範本',
         '這將會以內建的「113 下半年完整範本」覆蓋目前的排程資料（將保留您目前設定的年份與上下半年選項），確定要載入嗎？',
@@ -3138,6 +3382,7 @@
     }
 
     function confirmClearAll() {
+      if (!requireEditMode()) return;
       openConfirmModal(
         '清空所有排程',
         '確定要清空各病房排班、評估/ICF、復健工作與個人額外業務嗎？（治療師名單與活動輪替名稱將會保留）',
@@ -3180,6 +3425,10 @@
     }
 
     function importJSON(event) {
+      if (!requireEditMode()) {
+        event.target.value = '';
+        return;
+      }
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -3677,12 +3926,17 @@
             recordCurrentInput: 'recordCurrent',
             footerNoteInput: 'footerNote'
           };
+          if (!requireEditMode()) {
+            e.target.value = state[map[id]] || '';
+            return;
+          }
           state[map[id]] = e.target.value;
           saveState();
         });
       });
 
       // 預設進入 Tab 1
+      updateEditLockUI();
       switchTab('wards');
 
       // 嘗試自動連線 Firebase 雲端同步
