@@ -228,12 +228,13 @@
               class="hidden p-1.5 rounded-xl bg-white hover:bg-morandi-tealLight text-morandi-teal border border-cream-300 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </button>
-            <!-- 唯讀 / 編輯模式切換鎖 -->
-            <button id="editLockBtn" onclick="handleEditLockClick()"
-              class="px-2.5 py-1 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition flex items-center gap-1 whitespace-nowrap shadow-xs">
-              🔒 唯讀模式（點此解鎖）
-            </button>
           </div>
+
+          <!-- 編輯密碼鎖狀態切換按鈕 -->
+          <button id="editLockBtn" onclick="toggleEditLock()"
+            class="px-3 py-1.5 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 whitespace-nowrap shadow-xs">
+            🔒 唯讀模式（解鎖編輯）
+          </button>
         </div>
 
         <!-- 右側操作按鈕 -->
@@ -419,7 +420,7 @@
             <label class="block text-xs font-semibold text-slate-600 mb-1">總表底部附註</label>
             <input id="footerNoteInput" type="text"
               class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
-              placeholder="例如：評估與 ICF 類別分為成人／兒童" />
+              placeholder="例如：評估/ICF 類別：成人、兒童" />
           </div>
         </div>
       </div>
@@ -491,35 +492,39 @@
         </div>
       </div>
 
-      <!-- 編輯密碼管理區塊 -->
+      <!-- 編輯密碼鎖設定卡片 -->
       <div class="bg-white rounded-2xl border border-cream-200 shadow-sm p-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-              <span>🔐 編輯密碼鎖管理</span>
-              <span id="settingsLockBadge" class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold">目前：唯讀模式</span>
+              <span>🔐 編輯密碼鎖設定</span>
+              <span id="settingsLockBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">目前鎖定</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">預設編輯密碼為 <code class="px-1.5 py-0.5 bg-cream-100 rounded font-bold text-slate-700">ot1234</code>；修改後的密碼會自動同步至雲端與本機，供團隊統一使用。</p>
+            <p class="text-xs text-slate-500 mt-0.5">保護線上排程避免同仁誤觸改動；修改後將自動同步至雲端（Firestore），全科共用統一新密碼。</p>
           </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+
+        <div id="passwordSettingsBody" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">新編輯密碼</label>
-            <input id="newEditPasswordInput" type="password" placeholder="請輸入新密碼（至少 4 碼）"
-              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+            <label class="block text-xs font-bold text-slate-600 mb-1">設定新密碼</label>
+            <input id="newEditPasswordInput" type="password" autocomplete="new-password"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+              placeholder="請輸入新密碼（至少 2 碼）" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">再次確認新密碼</label>
-            <input id="confirmEditPasswordInput" type="password" placeholder="請再次輸入新密碼"
-              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
+            <label class="block text-xs font-bold text-slate-600 mb-1">再次確認新密碼</label>
+            <input id="confirmEditPasswordInput" type="password" autocomplete="new-password"
+              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal"
+              placeholder="請再次輸入新密碼" />
           </div>
           <div>
-            <button onclick="changeEditPassword()"
+            <button onclick="saveNewEditPassword()"
               class="w-full px-4 py-2 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white shadow-sm transition">
-              更新編輯密碼
+              儲存並同步新密碼
             </button>
           </div>
         </div>
+        <p class="text-[11px] text-slate-400">提示：預設密碼為 <code class="px-1 py-0.5 bg-cream-100 rounded text-slate-600">1234</code>。未解鎖狀態下僅能瀏覽、切換期別與列印匯出，無法修改排程與密碼。</p>
       </div>
     </section>
 
@@ -564,11 +569,11 @@
     };
     // Firestore 集合名稱（共用現有 Firebase 專案時可獨立區隔資料，不影響其他系統）
     const FIRESTORE_COLLECTION = "ot_ward_schedules";
+    const SETTINGS_DOC_ID = "_settings";
     const FIREBASE_CONFIG_STORAGE_KEY = "ot_ward_scheduler_firebase_cfg_v1";
-    const DEFAULT_EDIT_PASSWORD = "ot1234";
-    const EDIT_PASSWORD_STORAGE_KEY = "ot_ward_scheduler_edit_pwd_v1";
+    const EDIT_PWD_STORAGE_KEY = "ot_ward_scheduler_edit_pwd_v1";
     const UNLOCK_SESSION_KEY = "ot_ward_scheduler_unlocked_v1";
-    const SYSTEM_CONFIG_DOC_ID = "_system_config";
+    const DEFAULT_EDIT_PASSWORD = "1234";
 
     // =========================================================================
     // 1. 常數定義與預設範本資料 (113 下半年)
@@ -685,13 +690,13 @@
           [{ therapistId: 't_ou', time: '15:30', category: '成人' }],
           [],
           [{ therapistId: 't_wu', time: '15:30', category: '成人' }],
-          [{ therapistId: 't_chen', time: '15:30', category: '成人' }],
+          [{ therapistId: 't_chen', time: '15:30', category: '兒童' }],
           []
         ],
         pmIcf: [
           [{ therapistId: 't_lin', time: '14:00', category: '成人' }],
           [],
-          [{ therapistId: 't_chen', time: '14:00', category: '成人' }],
+          [{ therapistId: 't_chen', time: '14:00', category: '兒童' }],
           [{ therapistId: 't_chang', time: '16:00', category: '成人' }],
           []
         ]
@@ -728,7 +733,7 @@
         personalExtra,
         recordOrder: '歐黃陳吳林張儀',
         recordCurrent: '儀 歐 吳',
-        footerNote: '評估與 ICF 類別：成人 ／ 兒童'
+        footerNote: '評估/ICF 類別：成人、兒童'
       };
     }
 
@@ -742,89 +747,95 @@
     // brush: { mode: 'edit' | 'therapist' | 'tag' | 'eraser', value: string }
     let activeBrush = { mode: 'edit', value: '' };
 
+    // Firebase 雲端連線實例與狀態
+    let firebaseApp = null;
+    let firestoreDb = null;
+    let isCloudConnected = false;
+    let syncDebounceTimer = null;
+
+    function makePeriodKey(year, half) {
+      return `${year}-${half}`;
+    }
+
+    function getSortedPeriodKeys() {
+      return Object.keys(periodsStore).sort((a, b) => {
+        const pa = periodsStore[a] || {};
+        const pb = periodsStore[b] || {};
+        const ya = Number(pa.year) || 0;
+        const yb = Number(pb.year) || 0;
+        if (yb !== ya) return yb - ya;
+        const ha = pa.half === 'H2' ? 2 : 1;
+        const hb = pb.half === 'H2' ? 2 : 1;
+        return hb - ha;
+      });
+    }
+
+    function formatPeriodLabel(year, half) {
+      return `${year}年 ${half === 'H1' ? '上半年 (1~6月)' : '下半年 (7~12月)'}`;
+    }
+
+    function getPeriods() {
+      if (state && state.half === 'H1') {
+        return { label: '上半年', cols: ['1-2月', '3-4月', '5-6月'] };
+      }
+      return { label: '下半年', cols: ['7-8月', '9-10月', '11-12月'] };
+    }
+
+    function updateSyncStatusUI(status, customText = '') {
+      const badge = document.getElementById('syncStatusBadge');
+      const syncBtn = document.getElementById('manualSyncBtn');
+      if (!badge) return;
+
+      if (status === 'synced') {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '☁️ 雲端已同步';
+        if (syncBtn) syncBtn.classList.remove('hidden');
+      } else if (status === 'syncing') {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-sky-50 text-sky-700 border border-sky-200 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '⏳ 同步中...';
+        if (syncBtn) syncBtn.classList.remove('hidden');
+      } else if (status === 'error') {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-morandi-redLight text-morandi-red border border-red-200 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '⚠️ 讀取異常';
+        if (syncBtn) syncBtn.classList.remove('hidden');
+      } else {
+        badge.className = 'px-2.5 py-1 text-xs font-semibold rounded-xl bg-cream-100 text-slate-600 border border-cream-300 flex items-center gap-1 whitespace-nowrap';
+        badge.textContent = customText || '💾 本機模式';
+        if (syncBtn) syncBtn.classList.add('hidden');
+      }
+    }
+
     // 唯讀 / 編輯密碼鎖狀態（同一分頁暫存於 sessionStorage）
     let isEditMode = sessionStorage.getItem(UNLOCK_SESSION_KEY) === 'true';
-    let currentEditPassword = localStorage.getItem(EDIT_PASSWORD_STORAGE_KEY) || DEFAULT_EDIT_PASSWORD;
-
-    function requireEditMode() {
-      if (isEditMode) return true;
-      showToast('目前為唯讀模式，請先點擊上方「🔒 唯讀模式」輸入密碼解鎖編輯', 'info');
-      return false;
-    }
-
-    function updateEditLockUI() {
-      const btn = document.getElementById('editLockBtn');
-      const settingsBadge = document.getElementById('settingsLockBadge');
-      if (btn) {
-        if (isEditMode) {
-          btn.className = 'px-2.5 py-1 text-xs font-bold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition flex items-center gap-1 whitespace-nowrap shadow-xs';
-          btn.textContent = '🔓 編輯模式（點擊鎖定）';
-        } else {
-          btn.className = 'px-2.5 py-1 text-xs font-bold rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition flex items-center gap-1 whitespace-nowrap shadow-xs';
-          btn.textContent = '🔒 唯讀模式（點此解鎖）';
-        }
-      }
-      if (settingsBadge) {
-        if (isEditMode) {
-          settingsBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold';
-          settingsBadge.textContent = '目前：編輯模式（已解鎖）';
-        } else {
-          settingsBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold';
-          settingsBadge.textContent = '目前：唯讀模式';
-        }
-      }
-    }
-
-    function handleEditLockClick() {
-      if (isEditMode) {
-        isEditMode = false;
-        sessionStorage.removeItem(UNLOCK_SESSION_KEY);
-        activeBrush = { mode: 'edit', value: '' };
-        updateEditLockUI();
-        renderAll();
-        showToast('已切換回「🔒 唯讀模式」，排程已鎖定保護', 'info');
-      } else {
-        openUnlockModal();
-      }
-    }
-
-    function openUnlockModal() {
-      const bodyHtml = `
-        <div class="space-y-3">
-          <p class="text-xs text-slate-600 leading-relaxed">
-            為避免誤改排程，系統預設開啟唯讀保護。請輸入編輯密碼以解鎖排班與設定功能。
-          </p>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">編輯密碼</label>
-            <input id="unlockPasswordInput" type="password" placeholder="請輸入密碼"
-              onkeydown="if(event.key==='Enter') submitUnlockPassword()"
-              class="w-full px-3 py-2 text-sm bg-cream-50 border border-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-morandi-teal" />
-            <p class="text-[11px] text-slate-400 mt-1.5">預設密碼：<code class="px-1 py-0.5 bg-cream-100 rounded text-slate-600">ot1234</code>（解鎖後可於「4. 人員與基本設定」修改）</p>
-          </div>
         </div>
       `;
       const footerHtml = `
         <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
         <button onclick="submitUnlockPassword()" class="px-4 py-1.5 text-sm font-bold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">解鎖編輯</button>
       `;
-      openModal('🔓 解鎖編輯模式', bodyHtml, footerHtml);
+      openModal('🔒 輸入編輯密碼', bodyHtml, footerHtml);
       setTimeout(() => {
-        document.getElementById('unlockPasswordInput')?.focus();
-      }, 60);
+        const inp = document.getElementById('unlockPasswordInput');
+        if (inp) inp.focus();
+      }, 80);
     }
 
     function submitUnlockPassword() {
-      const inputVal = (document.getElementById('unlockPasswordInput')?.value || '').trim();
-      if (inputVal === currentEditPassword) {
-        isEditMode = true;
+      const inp = document.getElementById('unlockPasswordInput');
+      const val = inp ? inp.value.trim() : '';
+      if (!val) {
+        showToast('請輸入密碼', 'error');
+        return;
+      }
+      if (val === currentEditPassword) {
+        isEditUnlocked = true;
         sessionStorage.setItem(UNLOCK_SESSION_KEY, 'true');
         closeModal();
-        updateEditLockUI();
+        updateLockUI();
         renderAll();
-        showToast('解鎖成功！已切換為「🔓 編輯模式」', 'success');
+        showToast('已解鎖編輯模式', 'success');
       } else {
         showToast('密碼錯誤，請重新輸入', 'error');
-        const inp = document.getElementById('unlockPasswordInput');
         if (inp) {
           inp.value = '';
           inp.focus();
@@ -832,37 +843,50 @@
       }
     }
 
-    async function changeEditPassword() {
-      if (!requireEditMode()) return;
+    /**
+     * 所有寫入／修改操作前的權限檢查
+     */
+    function requireEditPermission() {
+      if (isEditUnlocked) return true;
+      showToast('目前為唯讀模式，請先輸入密碼解鎖編輯', 'info');
+      openUnlockModal();
+      return false;
+    }
+
+    async function saveNewEditPassword() {
+      if (!requireEditPermission()) return;
       const p1 = (document.getElementById('newEditPasswordInput')?.value || '').trim();
       const p2 = (document.getElementById('confirmEditPasswordInput')?.value || '').trim();
-      if (p1.length < 4) {
-        showToast('新密碼長度至少需 4 碼', 'error');
+      if (p1.length < 2) {
+        showToast('新密碼長度至少需要 2 個字元', 'error');
         return;
       }
       if (p1 !== p2) {
-        showToast('兩次輸入的新密碼不一致', 'error');
+        showToast('兩次輸入的新密碼不一致，請重新確認', 'error');
         return;
       }
 
       currentEditPassword = p1;
-      localStorage.setItem(EDIT_PASSWORD_STORAGE_KEY, p1);
+      localStorage.setItem(EDIT_PWD_STORAGE_KEY, p1);
       document.getElementById('newEditPasswordInput').value = '';
       document.getElementById('confirmEditPasswordInput').value = '';
 
       if (isCloudConnected && firestoreDb) {
+        updateSyncStatusUI('syncing');
         try {
-          await firestoreDb.collection(FIRESTORE_COLLECTION).doc(SYSTEM_CONFIG_DOC_ID).set({
-            payload: JSON.stringify({ editPassword: p1 }),
+          await firestoreDb.collection(FIRESTORE_COLLECTION).doc(SETTINGS_DOC_ID).set({
+            editPassword: p1,
             updatedAt: Date.now()
-          });
-          showToast('編輯密碼已更新並同步至雲端', 'success');
+          }, { merge: true });
+          updateSyncStatusUI('synced');
+          showToast('新密碼已儲存並同步至雲端', 'success');
         } catch (err) {
-          console.error('同步密碼至雲端失敗:', err);
-          showToast('編輯密碼已更新於本機（雲端同步失敗）', 'info');
+          console.error('同步編輯密碼至 Firestore 失敗:', err);
+          updateSyncStatusUI('error', '⚠️ 密碼同步失敗');
+          showToast('新密碼已存於本機，但雲端同步失敗', 'error');
         }
       } else {
-        showToast('編輯密碼已更新於本機', 'success');
+        showToast('新密碼已儲存（本機模式）', 'success');
       }
     }
 
@@ -1030,20 +1054,19 @@
             });
           }
         } else {
-          // 合併雲端資料（雲端優先），相容字串 payload 與舊版物件格式
+          // 合併雲端資料（雲端優先），過濾 _settings 設定文件並相容字串 payload 與舊版物件格式
           const cloudStore = {};
           snapshot.forEach(doc => {
             try {
               const raw = doc.data();
-              const data = (raw && typeof raw.payload === 'string') ? JSON.parse(raw.payload) : raw;
-              // 系統設定文件（同步團隊編輯密碼）
-              if (doc.id === SYSTEM_CONFIG_DOC_ID) {
-                if (data && data.editPassword) {
-                  currentEditPassword = data.editPassword;
-                  localStorage.setItem(EDIT_PASSWORD_STORAGE_KEY, currentEditPassword);
+              if (doc.id === SETTINGS_DOC_ID) {
+                if (raw && typeof raw.editPassword === 'string' && raw.editPassword.trim()) {
+                  currentEditPassword = raw.editPassword.trim();
+                  localStorage.setItem(EDIT_PWD_STORAGE_KEY, currentEditPassword);
                 }
                 return;
               }
+              const data = (raw && typeof raw.payload === 'string') ? JSON.parse(raw.payload) : raw;
               if (data && Array.isArray(data.therapists) && Array.isArray(data.wards)) {
                 cloudStore[doc.id] = data;
               }
@@ -1108,7 +1131,7 @@
     }
 
     function openNewPeriodModal() {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       const sorted = getSortedPeriodKeys();
       const latest = periodsStore[sorted[0]];
       // 自動推測下一個半年期別
@@ -1245,7 +1268,7 @@
     }
 
     function confirmDeleteCurrentPeriod() {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       const keys = Object.keys(periodsStore);
       if (keys.length <= 1) {
         showToast('至少須保留 1 個期別，無法刪除', 'error');
@@ -1367,14 +1390,21 @@
     }
 
     /**
-     * 取得評估/ICF類別（向下相容舊資料的 campus 欄位，預設回傳「成人」）
+     * 取得評估／ICF 項目的類別文字（相容舊期別的 campus 欄位）
      */
-    function getEvalCategory(item) {
-      if (!item) return '成人';
-      const val = (item.category || item.campus || '').trim();
-      if (val === '兒童') return '兒童';
-      if (val === '成人') return '成人';
-      return val || '成人';
+    function getEvalCategoryLabel(item) {
+      if (!item) return '';
+      if (item.category !== undefined) return item.category;
+      return item.campus || '';
+    }
+
+    /**
+     * 取得類別對應的柔和標籤樣式（成人：藍綠、兒童：暖橘）
+     */
+    function getEvalCategoryBadgeClass(cat) {
+      if (cat === '成人') return 'bg-morandi-tealLight text-morandi-tealDark border-morandi-teal/40';
+      if (cat === '兒童') return 'bg-orange-100 text-orange-800 border-orange-300';
+      return 'bg-slate-100 text-slate-600 border-slate-200';
     }
 
     function getTherapistRotation(therapist) {
@@ -1506,20 +1536,15 @@
       const icfKey = period === 'am' ? 'amIcf' : 'pmIcf';
       state.evalIcf[evalKey][dayIdx].forEach(item => {
         if (item.therapistId === therapistId) {
-          const catStr = getEvalCategory(item);
-          tasks.push({ text: `評(${catStr})${item.time ? ' ' + item.time : ''}`, type: 'eval' });
+          const cat = getEvalCategoryLabel(item);
+          const catStr = cat ? `(${cat})` : '';
+          tasks.push({ text: `評${catStr}${item.time ? ' ' + item.time : ''}`, type: 'eval', category: cat });
         }
       });
       state.evalIcf[icfKey][dayIdx].forEach(item => {
         if (item.therapistId === therapistId) {
           const catStr = getEvalCategory(item);
           tasks.push({ text: `ICF(${catStr})${item.time ? ' ' + item.time : ''}`, type: 'icf' });
-        }
-      });
-      state.evalIcf[icfKey][dayIdx].forEach(item => {
-        if (item.therapistId === therapistId) {
-          const campusStr = item.campus ? item.campus : '';
-          tasks.push({ text: `ICF${campusStr}${item.time ? ' ' + item.time : ''}`, type: 'icf' });
         }
       });
 
@@ -1576,9 +1601,10 @@
     }
 
     function renderAll() {
-      // 同步頂部期別下拉選單與唯讀鎖定狀態
+      // 同步頂部期別下拉選單與鎖定狀態
       renderPeriodSelector();
-      updateEditLockUI();
+      updateLockUI();
+
       const conflicts = detectConflicts();
       const conflictCount = Object.keys(conflicts).length;
 
@@ -1616,7 +1642,7 @@
     // 5. TAB 1 渲染與互動：各病房活動排程
     // =========================================================================
     function setBrush(mode, value = '') {
-      if (mode !== 'edit' && !requireEditMode()) return;
+      if (mode !== 'edit' && !requireEditPermission()) return;
       activeBrush = { mode, value };
       renderBrushToolbar();
     }
@@ -1823,7 +1849,7 @@
     }
 
     function updateWardMeta(wIdx, field, val) {
-      if (!requireEditMode()) {
+      if (!requireEditPermission()) {
         renderAll();
         return;
       }
@@ -1833,7 +1859,7 @@
     }
 
     function handleWardCellClick(wIdx, period, dayIdx) {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       const cell = state.wards[wIdx].schedule[period][dayIdx];
 
       if (activeBrush.mode === 'edit') {
@@ -2077,7 +2103,7 @@
     }
 
     function openPersonalExtraModal(therapistId, period, dayIdx) {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       const t = getTherapist(therapistId);
       if (!t) return;
       ensurePersonalExtraKeys();
@@ -2159,8 +2185,8 @@
             const tName = t ? t.short : '?';
             const cat = getEvalCategory(it);
             const catBadge = cat === '兒童'
-              ? `<span class="px-1 rounded bg-rose-100 text-rose-700 text-[10px]">兒童</span>`
-              : `<span class="px-1 rounded bg-sky-100 text-sky-700 text-[10px]">${escapeHtml(cat)}</span>`;
+              ? `<span class="px-1 rounded bg-pink-100 text-pink-800 text-[10px] font-bold">兒童</span>`
+              : `<span class="px-1 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">${escapeHtml(cat)}</span>`;
             return `<div class="px-1.5 py-0.5 rounded-md border text-[11px] font-semibold leading-tight flex items-center gap-1 ${r.badgeCls}">
               <span>${escapeHtml(tName)}</span>${catBadge}<span>${escapeHtml(it.time)}</span>
             </div>`;
@@ -2194,7 +2220,7 @@
         : tempEvalItems.map((it, idx) => {
             const t = getTherapist(it.therapistId);
             const cat = getEvalCategory(it);
-            const catCls = cat === '兒童' ? 'bg-rose-100 text-rose-700' : 'bg-morandi-tealLight text-morandi-tealDark';
+            const catCls = cat === '兒童' ? 'bg-pink-100 text-pink-800' : 'bg-blue-100 text-blue-800';
             return `
               <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-cream-50 border border-cream-200">
                 <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -2226,7 +2252,7 @@
               <select id="evalTherapistSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">${tOptions}</select>
             </div>
             <div>
-              <label class="block text-[11px] text-slate-500 mb-1">類別</label>
+              <label class="block text-[11px] text-slate-500 mb-1">類別（成人 / 兒童）</label>
               <select id="evalCategorySelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl font-semibold">
                 <option value="成人" selected>成人</option>
                 <option value="兒童">兒童</option>
@@ -2260,80 +2286,6 @@
       const time = document.getElementById('evalTimeInput').value.trim();
       if (!therapistId) return;
       tempEvalItems.push({ therapistId, category, time });
-      renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
-    }
-
-    function renderEvalIcfModalContent(rowKey, rowLabel, dayIdx) {
-      const listHtml = tempEvalItems.length === 0
-        ? `<div class="text-xs text-slate-400 text-center py-3 bg-cream-50 rounded-xl border border-dashed border-cream-300">目前尚未排入人員，請於下方新增</div>`
-        : tempEvalItems.map((it, idx) => {
-            const t = getTherapist(it.therapistId);
-            return `
-              <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-cream-50 border border-cream-200">
-                <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <span class="w-6 h-6 rounded-full text-xs text-white flex items-center justify-center" style="background-color:${t ? t.color : '#888'}">${t ? escapeHtml(t.short) : '?'}</span>
-                  <span>${t ? escapeHtml(t.name) : '未知'}</span>
-                  ${it.campus ? `<span class="px-1.5 py-0.5 text-xs rounded bg-morandi-tealLight text-morandi-tealDark">${escapeHtml(it.campus)}</span>` : ''}
-                  <span class="text-slate-600">${escapeHtml(it.time)}</span>
-                </div>
-                <button onclick="removeTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx}, ${idx})" class="text-xs text-morandi-red hover:underline font-medium">移除</button>
-              </div>
-            `;
-          }).join('');
-
-      const tOptions = state.therapists.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${escapeHtml(t.short)})</option>`).join('');
-      const timeChips = QUICK_TIMES.map(tm =>
-        `<button type="button" onclick="document.getElementById('evalTimeInput').value='${tm}'" class="px-2 py-0.5 rounded-lg bg-cream-100 hover:bg-morandi-tealLight text-xs text-slate-700 border border-cream-300">${tm}</button>`
-      ).join('');
-
-      const bodyHtml = `
-        <div class="space-y-2">
-          <p class="text-xs font-bold text-slate-500">已指派清單</p>
-          ${listHtml}
-        </div>
-        <div class="p-3.5 rounded-xl bg-cream-50 border border-cream-200 space-y-3">
-          <p class="text-xs font-bold text-slate-700">新增指派</p>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-[11px] text-slate-500 mb-1">治療師</label>
-              <select id="evalTherapistSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">${tOptions}</select>
-            </div>
-            <div>
-              <label class="block text-[11px] text-slate-500 mb-1">院區（選填）</label>
-              <select id="evalCampusSelect" class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl">
-                <option value="">不指定</option>
-                <option value="斗">斗（斗六）</option>
-                <option value="虎">虎（虎尾）</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-[11px] text-slate-500 mb-1">時間</label>
-            <input id="evalTimeInput" type="text" value="${rowKey.startsWith('am') ? '9:00' : '15:30'}"
-              class="w-full px-2.5 py-1.5 text-sm bg-white border border-cream-300 rounded-xl mb-2" placeholder="例如：9:00 或 15:30" />
-            <div class="flex flex-wrap gap-1">${timeChips}</div>
-          </div>
-          <button type="button" onclick="addTempEvalItem('${rowKey}', '${rowLabel}', ${dayIdx})"
-            class="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold transition">
-            + 加入清單
-          </button>
-        </div>
-      `;
-
-      const footerHtml = `
-        <button onclick="closeModal()" class="px-4 py-1.5 text-sm font-medium rounded-xl bg-white border border-cream-300 text-slate-700 hover:bg-cream-100">取消</button>
-        <button onclick="saveEvalIcfModal('${rowKey}', ${dayIdx})" class="px-4 py-1.5 text-sm font-semibold rounded-xl bg-morandi-teal hover:bg-morandi-tealDark text-white">儲存變更</button>
-      `;
-
-      openModal(`${rowLabel} — 週${DAYS[dayIdx]}`, bodyHtml, footerHtml);
-    }
-
-    function addTempEvalItem(rowKey, rowLabel, dayIdx) {
-      const therapistId = document.getElementById('evalTherapistSelect').value;
-      const campus = document.getElementById('evalCampusSelect').value;
-      const time = document.getElementById('evalTimeInput').value.trim();
-      if (!therapistId) return;
-      tempEvalItems.push({ therapistId, campus, time });
       renderEvalIcfModalContent(rowKey, rowLabel, dayIdx);
     }
 
@@ -2398,7 +2350,7 @@
     }
 
     function updateRehabCell(rowKey, dayIdx, therapistId) {
-      if (!requireEditMode()) {
+      if (!requireEditPermission()) {
         renderAll();
         return;
       }
@@ -2425,7 +2377,7 @@
     }
 
     function updateActivityName(idx, val) {
-      if (!requireEditMode()) {
+      if (!requireEditPermission()) {
         renderAll();
         return;
       }
@@ -2483,7 +2435,7 @@
     }
 
     function updateTherapistStartAct(tIdx, actIdx) {
-      if (!requireEditMode()) {
+      if (!requireEditPermission()) {
         renderAll();
         return;
       }
@@ -2864,8 +2816,9 @@
           ${DAYS.map((_, d) => {
             const txt = (state.evalIcf[key][d] || []).map(it => {
               const t = getTherapist(it.therapistId);
-              const cat = getEvalCategory(it);
-              return `${t ? t.short : ''}(${cat})${it.time ? ' ' + it.time : ''}`;
+              const cat = getEvalCategoryLabel(it);
+              const catStr = cat ? `(${cat})` : '';
+              return `${t ? t.short : ''}${catStr}${it.time ? ' ' + it.time : ''}`;
             }).join(' / ');
             return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
           }).join('')}
@@ -3162,8 +3115,9 @@
               label,
               ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
                 const t = getTherapist(it.therapistId);
-                const cat = getEvalCategory(it);
-                return `${t ? t.short : ''}(${cat})${it.time ? ' ' + it.time : ''}`;
+                const cat = getEvalCategoryLabel(it);
+                const catStr = cat ? `(${cat})` : '';
+                return `${t ? t.short : ''}${catStr}${it.time ? ' ' + it.time : ''}`;
               }).join(' / '))
             ]);
           });
@@ -3282,7 +3236,7 @@
     }
 
     function updateTherapistField(idx, field, val) {
-      if (!requireEditMode()) {
+      if (!requireEditPermission()) {
         renderAll();
         return;
       }
@@ -3295,7 +3249,7 @@
     }
 
     function updateTherapistColor(idx, paletteIdx) {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       const p = MORANDI_PALETTE[paletteIdx];
       state.therapists[idx].color = p.color;
       state.therapists[idx].bg = p.bg;
@@ -3305,7 +3259,7 @@
     }
 
     function addNewTherapist() {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       const p = MORANDI_PALETTE[state.therapists.length % MORANDI_PALETTE.length];
       const newId = 't_' + Date.now();
       state.therapists.push({
@@ -3322,7 +3276,7 @@
     }
 
     function confirmDeleteTherapist(idx) {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       if (state.therapists.length <= 1) {
         showToast('至少需保留一位治療師', 'error');
         return;
@@ -3368,7 +3322,7 @@
     // 9. 頂部動作：載入範本、清空、JSON 專案存取
     // =========================================================================
     function confirmLoadTemplate() {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       openConfirmModal(
         '載入 113 下半年範本',
         '這將會以內建的「113 下半年完整範本」覆蓋目前的排程資料（將保留您目前設定的年份與上下半年選項），確定要載入嗎？',
@@ -3382,7 +3336,7 @@
     }
 
     function confirmClearAll() {
-      if (!requireEditMode()) return;
+      if (!requireEditPermission()) return;
       openConfirmModal(
         '清空所有排程',
         '確定要清空各病房排班、評估/ICF、復健工作與個人額外業務嗎？（治療師名單與活動輪替名稱將會保留）',
@@ -3425,12 +3379,12 @@
     }
 
     function importJSON(event) {
-      if (!requireEditMode()) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!requireEditPermission()) {
         event.target.value = '';
         return;
       }
-      const file = event.target.files[0];
-      if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -3453,399 +3407,6 @@
         }
       };
       reader.readAsText(file);
-    }
-
-    // =========================================================================
-    // 10. 匯出 Excel (.xlsx) — 3 個完整工作表
-    // =========================================================================
-    function formatCellShortText(cell) {
-      const names = cell.therapistIds.map(id => {
-        const t = getTherapist(id);
-        return t ? t.short : '';
-      }).filter(Boolean);
-      const parts = [...names, ...cell.tags];
-      if (cell.customNote) parts.push(cell.customNote);
-      return parts.join('/');
-    }
-
-    function exportExcel() {
-      if (typeof XLSX === 'undefined') {
-        showToast('Excel 元件尚未載入完成，請稍候再試', 'error');
-        return;
-      }
-
-      try {
-        const periods = getPeriods();
-        const wb = XLSX.utils.book_new();
-
-        // ---------- Sheet 1: 各病房活動時間 ----------
-        const sheet1Data = [
-          [`${state.year}年${periods.label} 精神科病房活動時間總表`],
-          []
-        ];
-
-        state.wards.forEach(w => {
-          const ot = getTherapist(w.otId);
-          sheet1Data.push([`${w.name}`, '一', '二', '三', '四', '五', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
-          sheet1Data.push(['上午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.am[d]))]);
-          sheet1Data.push(['下午', ...DAYS.map((_, d) => formatCellShortText(w.schedule.pm[d]))]);
-          sheet1Data.push([]);
-        });
-
-        const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-        ws1['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 15 }];
-        XLSX.utils.book_append_sheet(wb, ws1, '各病房活動時間');
-
-        // ---------- Sheet 2: 個人活動時間表 ----------
-        const sheet2Data = [
-          [`${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作`],
-          []
-        ];
-
-        state.therapists.forEach(t => {
-          sheet2Data.push([`${t.name} (${t.short})`, '一', '二', '三', '四', '五']);
-          sheet2Data.push(['早務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' '))]);
-          sheet2Data.push(['上午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'am', d).join('/'))]);
-          sheet2Data.push(['下午', ...DAYS.map((_, d) => getPersonalWardTasks(t.id, 'pm', d).join('/'))]);
-          sheet2Data.push(['晚務', ...DAYS.map((_, d) => getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' '))]);
-          sheet2Data.push([]);
-        });
-
-        // 評估與 ICF 總表
-        sheet2Data.push(['評估與ICF總表', '一', '二', '三', '四', '五']);
-        [
-          ['上午評估', 'amEval'],
-          ['上午ICF', 'amIcf'],
-          ['下午評估', 'pmEval'],
-          ['下午ICF', 'pmIcf']
-        ].forEach(([label, key]) => {
-          sheet2Data.push([
-            label,
-            ...DAYS.map((_, d) => (state.evalIcf[key][d] || []).map(it => {
-              const t = getTherapist(it.therapistId);
-              return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
-            }).join(' / '))
-          ]);
-        });
-        sheet2Data.push([]);
-
-        // 復健工作總表
-        sheet2Data.push(['復健工作總表', '一', '二', '三', '四', '五']);
-        [
-          ['上午園藝', 'amGarden'],
-          ['上午掃地', 'amSweep'],
-          ['下午園藝', 'pmGarden'],
-          ['下午掃地', 'pmSweep']
-        ].forEach(([label, key]) => {
-          sheet2Data.push([
-            label,
-            ...DAYS.map((_, d) => {
-              const t = getTherapist(state.rehab[key][d]);
-              return t ? t.short : '';
-            })
-          ]);
-        });
-        sheet2Data.push([]);
-
-        // 活動輪替與備註
-        sheet2Data.push(['活動輪替順序', state.activities.join(' → ')]);
-        sheet2Data.push(['紀錄二次順序', state.recordOrder || '']);
-        sheet2Data.push(['本期二次紀錄', state.recordCurrent || '']);
-        sheet2Data.push(['備註', state.footerNote || '']);
-
-        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-        ws2['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
-        XLSX.utils.book_append_sheet(wb, ws2, '個人活動時間表');
-
-        // ---------- Sheet 3: 各病房公告表(含輪替) ----------
-        const sheet3Data = [
-          [`${state.year}年${periods.label} 各病房活動時間公告表（含三期輪替）`],
-          []
-        ];
-
-        const formatAnnouncementPlain = (cell) => {
-          const nonRotTags = cell.tags.filter(t => NON_ROTATION_TAGS.includes(t));
-          const hasWR = cell.tags.includes('WR');
-          const therapists = cell.therapistIds.map(id => getTherapist(id)).filter(Boolean);
-
-          if (therapists.length === 0) {
-            return [...cell.tags, cell.customNote].filter(Boolean).join(' / ');
-          }
-          if (nonRotTags.length > 0) {
-            const names = therapists.map(t => t.name).join('、');
-            return `${names}\n${nonRotTags.join('、')}${hasWR ? '/WR' : ''}${cell.customNote ? '\n' + cell.customNote : ''}`;
-          }
-          return therapists.map(t => {
-            const rot = getTherapistRotation(t);
-            return `${t.name}${hasWR ? '(WR)' : ''}\n${periods.cols[0]}:${rot[0]} | ${periods.cols[1]}:${rot[1]} | ${periods.cols[2]}:${rot[2]}`;
-          }).join('\n') + (cell.customNote ? `\n${cell.customNote}` : '');
-        };
-
-        state.wards.forEach(w => {
-          const ot = getTherapist(w.otId);
-          const wardNum = w.name.replace('W', '');
-          sheet3Data.push([`${state.year}年${periods.label} ${wardNum}病房活動時間表`, '', '', '', `負責OT：${ot ? ot.name : ''}`, w.wrTime || '']);
-          sheet3Data.push(['時間', '星期一', '星期二', '星期三', '星期四', '星期五']);
-          sheet3Data.push(['上午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.am[d]))]);
-          sheet3Data.push(['下午活動', ...DAYS.map((_, d) => formatAnnouncementPlain(w.schedule.pm[d]))]);
-          sheet3Data.push([]);
-        });
-
-        const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
-        ws3['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }];
-        XLSX.utils.book_append_sheet(wb, ws3, '各病房公告表(含輪替)');
-
-        const filename = `${state.year}年${periods.label}_病房活動時間表.xlsx`;
-        XLSX.writeFile(wb, filename);
-        showToast(`已成功匯出 Excel：${filename}`, 'success');
-      } catch (err) {
-        console.error(err);
-        showToast('匯出 Excel 時發生錯誤', 'error');
-      }
-    }
-
-    // =========================================================================
-    // 11. 匯出 Word (.doc) — 總表 + 每病房獨立分頁公告表
-    // =========================================================================
-    function exportWord() {
-      try {
-        const periods = getPeriods();
-
-        // 1. 第一頁：各病房總表 + 個人課表 + 評估ICF + 復工
-        let wardSummaryHtml = state.wards.map(w => {
-          const ot = getTherapist(w.otId);
-          return `
-            <table class="summary-table" style="margin-bottom:8px;">
-              <tr>
-                <th style="width:12%; background:#E8F1F1;">${escapeHtml(w.name)}</th>
-                <th style="width:14%; background:#F3F4F6;">一</th>
-                <th style="width:14%; background:#F3F4F6;">二</th>
-                <th style="width:14%; background:#F3F4F6;">三</th>
-                <th style="width:14%; background:#F3F4F6;">四</th>
-                <th style="width:14%; background:#F3F4F6;">五</th>
-                <th style="width:18%; background:#F9FAFB;">負責OT / WR</th>
-              </tr>
-              <tr>
-                <td style="font-weight:bold; background:#F9FAFB;">上午</td>
-                ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.am[d])) || '&nbsp;'}</td>`).join('')}
-                <td rowspan="2" style="font-size:9.5pt;"><b>${ot ? escapeHtml(ot.name) : ''}</b><br/>${escapeHtml(w.wrTime || '')}</td>
-              </tr>
-              <tr>
-                <td style="font-weight:bold; background:#F9FAFB;">下午</td>
-                ${DAYS.map((_, d) => `<td>${escapeHtml(formatCellShortText(w.schedule.pm[d])) || '&nbsp;'}</td>`).join('')}
-              </tr>
-            </table>
-          `;
-        }).join('');
-
-        // 個人活動時間表
-        let personalSummaryHtml = state.therapists.map(t => `
-          <table class="summary-table" style="margin-bottom:6px;">
-            <tr>
-              <th style="width:14%; background:#E8F1F1;">${escapeHtml(t.name)} (${escapeHtml(t.short)})</th>
-              <th style="width:17.2%; background:#F3F4F6;">一</th>
-              <th style="width:17.2%; background:#F3F4F6;">二</th>
-              <th style="width:17.2%; background:#F3F4F6;">三</th>
-              <th style="width:17.2%; background:#F3F4F6;">四</th>
-              <th style="width:17.2%; background:#F3F4F6;">五</th>
-            </tr>
-            <tr>
-              <td style="background:#FAFAFA; font-size:9pt;">早務</td>
-              ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'am', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
-            </tr>
-            <tr>
-              <td style="font-weight:bold;">上午</td>
-              ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'am', d).join('/')) || '&nbsp;'}</td>`).join('')}
-            </tr>
-            <tr>
-              <td style="font-weight:bold;">下午</td>
-              ${DAYS.map((_, d) => `<td style="font-weight:bold;">${escapeHtml(getPersonalWardTasks(t.id, 'pm', d).join('/')) || '&nbsp;'}</td>`).join('')}
-            </tr>
-            <tr>
-              <td style="background:#FAFAFA; font-size:9pt;">晚務</td>
-              ${DAYS.map((_, d) => `<td style="font-size:9pt;">${escapeHtml(getPersonalSideTasks(t.id, 'pm', d).map(x => x.text).join(' ')) || '&nbsp;'}</td>`).join('')}
-            </tr>
-          </table>
-        `).join('');
-
-        // 評估ICF 與 復工總表
-        const evalRowsHtml = [
-          ['上午評估', 'amEval'], ['上午ICF', 'amIcf'], ['下午評估', 'pmEval'], ['下午ICF', 'pmIcf']
-        ].map(([label, key]) => `
-          <tr>
-            <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
-            ${DAYS.map((_, d) => {
-              const txt = (state.evalIcf[key][d] || []).map(it => {
-                const t = getTherapist(it.therapistId);
-                return `${t ? t.short : ''}${it.campus || ''}${it.time ? ' ' + it.time : ''}`;
-              }).join(' / ');
-              return `<td>${escapeHtml(txt) || '&nbsp;'}</td>`;
-            }).join('')}
-          </tr>
-        `).join('');
-
-        const rehabRowsHtml = [
-          ['上午園藝', 'amGarden'], ['上午掃地', 'amSweep'], ['下午園藝', 'pmGarden'], ['下午掃地', 'pmSweep']
-        ].map(([label, key]) => `
-          <tr>
-            <td style="font-weight:bold; background:#F9FAFB;">${label}</td>
-            ${DAYS.map((_, d) => {
-              const t = getTherapist(state.rehab[key][d]);
-              return `<td>${t ? escapeHtml(t.short) : '&nbsp;'}</td>`;
-            }).join('')}
-          </tr>
-        `).join('');
-
-        // 2. 後續每頁一間病房公告表 (8W ~ 12W)
-        const wardPagesHtml = state.wards.map(w => {
-          const ot = getTherapist(w.otId);
-          const wardNum = w.name.replace('W', '');
-          return `
-            <br clear="all" style="page-break-before:always;" />
-            <div style="text-align:center; margin-bottom:10px;">
-              <span style="font-size:18pt; font-weight:bold; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
-                ${state.year}年${periods.label} ${escapeHtml(wardNum)}病房活動時間表
-              </span>
-              <span style="font-size:13pt; font-weight:bold; margin-left:24px; font-family:'標楷體','DFKai-SB','Microsoft JhengHei',sans-serif;">
-                負責OT：${ot ? escapeHtml(ot.name) : ''}
-              </span>
-            </div>
-            <table class="announce-word-table">
-              <tr>
-                <th style="width:10%; background:#F3F4F6;">時間</th>
-                <th style="width:18%; background:#F3F4F6;">星期一</th>
-                <th style="width:18%; background:#F3F4F6;">星期二</th>
-                <th style="width:18%; background:#F3F4F6;">星期三</th>
-                <th style="width:18%; background:#F3F4F6;">星期四</th>
-                <th style="width:18%; background:#F3F4F6;">星期五</th>
-              </tr>
-              <tr>
-                <td style="font-weight:bold; font-size:13pt; background:#F9FAFB; height:165px;">上午<br/>活動</td>
-                ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.am[d], periods, true)}</td>`).join('')}
-              </tr>
-              <tr>
-                <td style="font-weight:bold; font-size:13pt; background:#F9FAFB; height:165px;">下午<br/>活動</td>
-                ${DAYS.map((_, d) => `<td style="padding:6px 4px;">${buildAnnouncementCellInnerHTML(w.schedule.pm[d], periods, true)}</td>`).join('')}
-              </tr>
-            </table>
-          `;
-        }).join('');
-
-        const docHtml = `
-          <html xmlns:o="urn:schemas-microsoft-com:office:office"
-                xmlns:w="urn:schemas-microsoft-com:office:word"
-                xmlns="http://www.w3.org/TR/REC-html40">
-          <head>
-            <meta charset="utf-8" />
-            <title>${state.year}年${periods.label}病房活動時間表</title>
-            <style>
-              @page Section1 {
-                size: 29.7cm 21.0cm;
-                mso-page-orientation: landscape;
-                margin: 1.2cm 1.2cm 1.2cm 1.2cm;
-              }
-              div.Section1 { page: Section1; }
-              body {
-                font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
-                color: #000000;
-              }
-              h2 {
-                font-size: 14pt;
-                margin: 6px 0 8px 0;
-                text-align: center;
-              }
-              h3 {
-                font-size: 11.5pt;
-                margin: 10px 0 4px 0;
-              }
-              table.summary-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 10pt;
-              }
-              table.summary-table th, table.summary-table td {
-                border: 1px solid #000000;
-                padding: 3px 4px;
-                text-align: center;
-                vertical-align: middle;
-              }
-              table.announce-word-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-family: "標楷體", "DFKai-SB", "Microsoft JhengHei", sans-serif;
-                font-size: 12pt;
-              }
-              table.announce-word-table th, table.announce-word-table td {
-                border: 1.5px solid #000000;
-                text-align: center;
-                vertical-align: middle;
-              }
-              table.announce-word-table th {
-                padding: 8px 4px;
-                font-size: 13pt;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="Section1">
-              <h2>${state.year}年${periods.label} 精神科病房職能治療活動時間總表</h2>
-              ${wardSummaryHtml}
-
-              <br clear="all" style="page-break-before:always;" />
-              <h2>${state.year}年${periods.label} 個人活動時間表 / 評估ICF / 復健工作總表</h2>
-              ${personalSummaryHtml}
-
-              <h3>評估與 ICF 總表</h3>
-              <table class="summary-table" style="margin-bottom:8px;">
-                <tr>
-                  <th style="width:14%; background:#F3F4F6;">類別</th>
-                  <th style="width:17.2%; background:#F3F4F6;">一</th>
-                  <th style="width:17.2%; background:#F3F4F6;">二</th>
-                  <th style="width:17.2%; background:#F3F4F6;">三</th>
-                  <th style="width:17.2%; background:#F3F4F6;">四</th>
-                  <th style="width:17.2%; background:#F3F4F6;">五</th>
-                </tr>
-                ${evalRowsHtml}
-              </table>
-
-              <h3>復健工作（復工）總表</h3>
-              <table class="summary-table" style="margin-bottom:8px;">
-                <tr>
-                  <th style="width:14%; background:#F3F4F6;">項目</th>
-                  <th style="width:17.2%; background:#F3F4F6;">一</th>
-                  <th style="width:17.2%; background:#F3F4F6;">二</th>
-                  <th style="width:17.2%; background:#F3F4F6;">三</th>
-                  <th style="width:17.2%; background:#F3F4F6;">四</th>
-                  <th style="width:17.2%; background:#F3F4F6;">五</th>
-                </tr>
-                ${rehabRowsHtml}
-              </table>
-
-              <p style="font-size:10pt; margin-top:6px;">
-                <b>活動輪替順序：</b>${escapeHtml(state.activities.join(' → '))}　｜　
-                <b>紀錄二次順序：</b>${escapeHtml(state.recordOrder)}（本期：${escapeHtml(state.recordCurrent)}）　｜　
-                ${escapeHtml(state.footerNote)}
-              </p>
-
-              ${wardPagesHtml}
-            </div>
-          </body>
-          </html>
-        `;
-
-        const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const filename = `${state.year}年${periods.label}_病房活動時間表.doc`;
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(`已成功匯出 Word：${filename}`, 'success');
-      } catch (err) {
-        console.error(err);
-        showToast('匯出 Word 時發生錯誤', 'error');
-      }
     }
 
     // =========================================================================
@@ -3926,7 +3487,7 @@
             recordCurrentInput: 'recordCurrent',
             footerNoteInput: 'footerNote'
           };
-          if (!requireEditMode()) {
+          if (!requireEditPermission()) {
             e.target.value = state[map[id]] || '';
             return;
           }
@@ -3935,8 +3496,8 @@
         });
       });
 
-      // 預設進入 Tab 1
-      updateEditLockUI();
+      // 初始化鎖定狀態並預設進入 Tab 1
+      updateLockUI();
       switchTab('wards');
 
       // 嘗試自動連線 Firebase 雲端同步
